@@ -1,7 +1,7 @@
 ---
 title: 'The model that finds the bug will defend the bug'
 description: 'The rule that made my AI pipeline work: never let the model that found the bug judge it. Three validation rounds kill 80%% of AI-generated findings. Here''s the architecture, the prompts, and the dead ends.'
-pubDate: 2026-08-07
+pubDate: 2026-08-04
 tags: ['AI', 'Methodology', 'Tooling']
 ---
 
