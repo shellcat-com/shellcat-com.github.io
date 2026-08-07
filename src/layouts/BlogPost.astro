@@ -12,26 +12,19 @@ interface Props {
   older: Adjacent | null;
 }
 const { post, readingTime, newer, older } = Astro.props;
-const { title, description, pubDate, updatedDate, heroImage, tags } = post.data;
+const { title, description, pubDate, updatedDate, tags } = post.data;
 ---
-<BaseLayout title={title} description={description} image={heroImage} article={true}>
-  <article class="article-main" style="max-width:var(--measure);margin-inline:auto;">
+<BaseLayout title={title} description={description} article={true}>
+  <article style="max-width:var(--wrap);margin-inline:auto;">
     <header class="article-header">
       <a class="back" href="/">← all writing</a>
       <h1>{title}</h1>
-      <div class="meta">
+      <div class="article-meta">
         <FormattedDate date={pubDate} />
-        <span>·</span>
-        <span>{readingTime}</span>
-        {tags && tags.length > 0 && <span>·</span>}
-        {tags?.map((t) => <span class="tag">{t}</span>)}
+        <span>· {readingTime}</span>
+        {tags && tags.length > 0 && tags.map((t) => <span class="tag">{t}</span>)}
         {updatedDate && <span>· updated <FormattedDate date={updatedDate} /></span>}
       </div>
-      {heroImage && (
-        <div class="article-hero">
-          <img src={heroImage} alt="" width="720" height="405" />
-        </div>
-      )}
     </header>
 
     <div class="prose">
@@ -41,10 +34,16 @@ const { title, description, pubDate, updatedDate, heroImage, tags } = post.data;
     {(newer || older) && (
       <nav class="post-nav">
         {newer ? (
-          <a href={newer.href}><span class="dir">← newer</span><div class="t">{newer.title}</div></a>
+          <a class="prev" href={newer.href}>
+            <div class="nav-arrow">← newer</div>
+            <div class="post-nav-title">{newer.title}</div>
+          </a>
         ) : <span></span>}
         {older ? (
-          <a class="next" href={older.href}><span class="dir">older →</span><div class="t">{older.title}</div></a>
+          <a class="next" href={older.href}>
+            <div class="nav-arrow">older →</div>
+            <div class="post-nav-title">{older.title}</div>
+          </a>
         ) : <span></span>}
       </nav>
     )}

@@ -24,8 +24,9 @@ const ogUrl = new URL(image, Astro.site);
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 <meta name="generator" content={Astro.generator} />
-<meta name="color-scheme" content="dark" />
-<meta name="theme-color" content="#0b0d10" />
+<meta name="color-scheme" content="light dark" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#131418" media="(prefers-color-scheme: dark)" />
 
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="apple-touch-icon" href="/avatar.png" />

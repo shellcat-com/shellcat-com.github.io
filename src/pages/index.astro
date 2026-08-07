@@ -2,41 +2,32 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import FormattedDate from '../components/FormattedDate.astro';
+import { SITE } from '../consts';
 import { byNewest } from '../utils';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(byNewest);
 ---
 <BaseLayout>
+  <section class="author">
+    <img class="author-avatar" src="/avatar.png" alt="" width="70" height="70" />
+    <h2 class="author-name">{SITE.title}</h2>
+    <p class="author-bio">{SITE.tagline}. Proof of concept, or it didn't happen.</p>
+  </section>
+
+  <h3 class="posts-note">Recent Posts</h3>
+
   {posts.length === 0 ? (
     <p class="empty-state">No write-ups yet.</p>
   ) : (
-    <ol class="index-list">
-      {posts.map((post) => (
-        <li>
-          <a class="entry" href={`/blog/${post.id}/`}>
-            {post.data.heroImage ? (
-              <div class="entry__thumb">
-                <img src={post.data.heroImage} alt="" loading="lazy" width="480" height="270" />
-              </div>
-            ) : (
-              <div class="entry__thumb entry__thumb--empty">{post.data.title.charAt(0).toLowerCase()}_</div>
-            )}
-            <div class="entry__body">
-              <time class="entry__date" datetime={post.data.pubDate.toISOString()}>
-                <FormattedDate date={post.data.pubDate} />
-              </time>
-              <h2 class="entry__title">{post.data.title}</h2>
-              <p class="entry__desc">{post.data.description}</p>
-              <span class="entry__read">
-                Read
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                  <path d="M5 12h14M13 6l6 6-6 6"/>
-                </svg>
-              </span>
-            </div>
-          </a>
-        </li>
-      ))}
-    </ol>
+    posts.map((post) => (
+      <article class="post-item">
+        <h4 class="post-item-title">
+          <a href={`/blog/${post.id}/`}>{post.data.title}</a>
+        </h4>
+        <time class="post-item-date" datetime={post.data.pubDate.toISOString()}>
+          <FormattedDate date={post.data.pubDate} />
+        </time>
+      </article>
+    ))
   )}
 </BaseLayout>

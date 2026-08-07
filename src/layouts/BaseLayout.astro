@@ -9,23 +9,51 @@ interface Props {
   description?: string;
   image?: string;
   article?: boolean;
-  wide?: boolean;
 }
-const { wide, ...head } = Astro.props;
+const { article, ...head } = Astro.props;
 ---
 <!doctype html>
 <html lang="en">
   <head>
-    <BaseHead {...head} />
+    <BaseHead {...head} article={article} />
     <ClientRouter />
+    <!-- block transition flash on load -->
+    <style is:inline>html.notransition,html.notransition *{transition:none!important}</style>
+    <!-- apply saved theme before paint -->
+    <script is:inline>
+      (function(){
+        var t=localStorage.getItem('theme');
+        if(t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme:dark)').matches)){
+          document.documentElement.classList.add('dark');
+        }
+        document.documentElement.classList.add('notransition');
+        document.addEventListener('DOMContentLoaded',function(){
+          document.documentElement.classList.remove('notransition');
+        });
+      })();
+    </script>
   </head>
   <body>
     <Header />
     <main class="site-main">
-      <div class:list={['wrap', { narrow: !wide }]}>
+      <div class="wrap">
         <slot />
       </div>
     </main>
     <Footer />
+
+    <script>
+      document.getElementById('themeToggle')?.addEventListener('click', () => {
+        const html = document.documentElement;
+        html.classList.remove('notransition');
+        if (html.classList.contains('dark')) {
+          html.classList.remove('dark');
+          localStorage.setItem('theme', 'light');
+        } else {
+          html.classList.add('dark');
+          localStorage.setItem('theme', 'dark');
+        }
+      });
+    </script>
   </body>
 </html>
