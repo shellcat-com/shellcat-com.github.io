@@ -18,8 +18,15 @@
   --link:          inherit;
   --link-hover:    #003fff;
 
-  --code-bg:       #d8dbe2;
-  --code-text:     #333638;
+  /* inline code */
+  --code-bg:       #eeeff2;
+  --code-text:     #2a2a3c;
+  --code-border:   #dcdce0;
+
+  /* code blocks — always dark terminal in both modes */
+  --pre-bg:        #16181d;
+  --pre-text:      #cdd6f4;
+  --pre-border:    #262830;
 
   --font-mono:     'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
@@ -29,8 +36,8 @@
 
 /* ════════════════════════════  Dark mode  ════════════════════════════ */
 html.dark {
-  --bg:            #131418;
-  --bg-raised:     #1a1b21;
+  --bg:            #0d0d12;
+  --bg-raised:     #131418;
   --border:        #1b1d25;
   --border-dim:    #1b1d25;
 
@@ -42,8 +49,15 @@ html.dark {
   --link:          inherit;
   --link-hover:    #77a8fd;
 
-  --code-bg:       #2d2d2d;
-  --code-text:     #c2c4ca;
+  /* inline code — slightly raised from page bg */
+  --code-bg:       #1c1c26;
+  --code-text:     #cdd6f4;
+  --code-border:   #2a2a38;
+
+  /* code blocks — deeper than page bg for contrast */
+  --pre-bg:        #0b0d13;
+  --pre-text:      #cdd6f4;
+  --pre-border:    #181a22;
 }
 
 /* ════════════════════════════  Reset  ════════════════════════════ */
@@ -254,18 +268,40 @@ html.dark .theme-toggle .icon-moon { display: none; }
 .prose table { width: 100%; border-collapse: collapse; font-size: 13px; display: block; overflow-x: auto; }
 .prose th, .prose td { border: 1px solid var(--border-dim); padding: 5px 10px; text-align: left; }
 .prose th { background: var(--bg-raised); font-size: 12px; color: var(--heading); }
+
+/* inline code */
 .prose :not(pre) > code {
-  font-size: 0.9em; background: var(--code-bg); color: var(--code-text);
-  border: 1px solid var(--border-dim); border-radius: 3px; padding: 1px 5px;
+  font-size: 0.9em;
+  background: var(--code-bg);
+  color: var(--code-text);
+  border: 1px solid var(--code-border);
+  border-radius: 3px;
+  padding: 1px 6px;
 }
+
+/* code blocks — dark terminal style, always, in both themes */
 .prose pre {
-  font-size: 13px; line-height: 1.55;
-  padding: 0.5rem 1rem; border-radius: var(--radius);
-  background: var(--bg-raised); overflow-x: auto;
-  margin-block: 1.4em; tab-size: 2;
-  border: 1px solid var(--border-dim);
+  font-size: 13px; line-height: 1.6;
+  padding: 1rem 1.1rem;
+  border-radius: 6px;
+  background: var(--pre-bg);
+  color: var(--pre-text);
+  border: 1px solid var(--pre-border);
+  overflow-x: auto;
+  margin-block: 1.4em;
+  tab-size: 2;
 }
-.prose pre code { background: none; border: none; padding: 0; font-size: inherit; color: var(--text); }
+.prose pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: var(--pre-text);
+}
+
+/* Shiki syntax highlighting overrides — keep it readable in both modes */
+.prose pre .line { color: var(--pre-text); }
+.prose pre code span { color: inherit; }
 
 /* prev / next */
 .post-nav { display: flex; margin-top: 3.5em; border-top: 1px solid var(--border-dim); line-height: 1.4; }
