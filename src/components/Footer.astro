@@ -3,12 +3,14 @@ import { SITE, SOCIALS } from '../consts';
 const year = new Date().getFullYear();
 ---
 <footer class="site-footer">
-  <div class="footer-links">
+  <span class="copyright">&copy; {year} {SITE.title}</span>
+  <nav class="footer-links" aria-label="Social">
     {SOCIALS.map((s) => (
-      <a href={s.href} target={s.name === 'rss' ? undefined : '_blank'} rel={s.name === 'rss' ? undefined : 'me noopener'}>
+      <a href={s.href}
+         target={s.name === 'rss' ? undefined : '_blank'}
+         rel={s.name === 'rss' ? undefined : 'me noopener'}>
         {s.label.toLowerCase()}
       </a>
     ))}
-  </div>
-  <span class="copyright">&copy; {year} {SITE.title}</span>
+  </nav>
 </footer>

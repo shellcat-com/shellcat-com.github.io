@@ -43,16 +43,14 @@ const { article, ...head } = Astro.props;
     <Footer />
 
     <script>
-      document.getElementById('themeToggle')?.addEventListener('click', () => {
+      // Delegated so it survives ClientRouter (view-transition) navigations,
+      // which swap the button element and would drop a directly-bound listener.
+      document.addEventListener('click', (e) => {
+        if (!(e.target as Element).closest?.('#themeToggle')) return;
         const html = document.documentElement;
         html.classList.remove('notransition');
-        if (html.classList.contains('dark')) {
-          html.classList.remove('dark');
-          localStorage.setItem('theme', 'light');
-        } else {
-          html.classList.add('dark');
-          localStorage.setItem('theme', 'dark');
-        }
+        const dark = html.classList.toggle('dark');
+        localStorage.setItem('theme', dark ? 'dark' : 'light');
       });
     </script>
   </body>

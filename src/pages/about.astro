@@ -1,24 +1,40 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { SITE } from '../consts';
+import { SITE, SOCIALS } from '../consts';
 ---
 <BaseLayout title="about" description={`About ${SITE.title}`}>
-  <div class="about-shell">
-    <div class="who">
-      <img src="/avatar.png" alt="" width="64" height="64" />
-      <h1>{SITE.title}</h1>
-      <span class="handle">{SITE.handle} · bug bounty hunter</span>
-    </div>
+  <section class="about">
+    <header class="about-head">
+      <img class="about-avatar" src="/avatar.png" alt="" width="56" height="56" />
+      <div class="about-id">
+        <h1>{SITE.title}<span class="cursor" aria-hidden="true">_</span></h1>
+        <p class="about-handle">{SITE.handle} · bug bounty hunter</p>
+      </div>
+    </header>
 
     <p>
       Independent security researcher. I break web apps, cloud infrastructure, and
-      APIs — then write up what worked. Only findings with a working PoC make it here.
+      APIs — then write up what actually worked. Every post here ships with a working
+      proof-of-concept. If I can't prove it, it doesn't get written.
+    </p>
+    <p>
+      Findings go through coordinated disclosure. For anything sensitive, reach me
+      over an encrypted channel — details on request.
     </p>
 
-    <h2>Contact</h2>
-    <p>
-      Reach me through the links in the header. For anything sensitive, use an
-      encrypted channel.
-    </p>
-  </div>
+    <dl class="about-meta">
+      <div><dt>focus</dt><dd>web · cloud · apis</dd></div>
+      <div><dt>disclosure</dt><dd>coordinated, PoC-backed</dd></div>
+      <div>
+        <dt>links</dt>
+        <dd class="about-links">
+          {SOCIALS.map((s) => (
+            <a href={s.href}
+               target={s.name === 'rss' ? undefined : '_blank'}
+               rel={s.name === 'rss' ? undefined : 'me noopener'}>{s.label.toLowerCase()}</a>
+          ))}
+        </dd>
+      </div>
+    </dl>
+  </section>
 </BaseLayout>

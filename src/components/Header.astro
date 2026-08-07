@@ -7,7 +7,7 @@ const path = Astro.url.pathname;
   <div class="nav-inner">
     <a class="brand" href="/" aria-label={SITE.title}>
       <img class="mark" src="/avatar.png" alt="" width="24" height="24" />
-      {SITE.title}
+      <span class="brand-name">{SITE.title}<span class="cursor" aria-hidden="true">_</span></span>
     </a>
     <div class="nav-links">
       {NAV.map((item) => (
