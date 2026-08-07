@@ -158,6 +158,7 @@ html.dark .theme-toggle .icon-moon { display: none; }
   width: 70px; height: 70px; border-radius: 50%;
   object-fit: cover; user-select: none;
   border: 1px solid var(--border);
+  display: block; margin-inline: auto;
 }
 .author-name {
   font-size: 1.5em; margin: 12px 0 4px;
