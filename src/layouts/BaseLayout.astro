@@ -20,8 +20,6 @@ const { wide, ...head } = Astro.props;
     <ClientRouter />
   </head>
   <body>
-    <div class="progress" id="progress" aria-hidden="true"></div>
-
     <Header />
     <main class="site-main">
       <div class:list={['wrap', { narrow: !wide }]}>
@@ -29,82 +27,5 @@ const { wide, ...head } = Astro.props;
       </div>
     </main>
     <Footer />
-
-    <button class="to-top" id="toTop" aria-label="Back to top">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-    </button>
-
-    <script>
-      // ── TOC scroll-spy ──
-      let tocHeadings: HTMLElement[] = [];
-      let tocLinks = new Map<string, HTMLElement>();
-      function initTOC() {
-        tocLinks = new Map();
-        document.querySelectorAll<HTMLElement>('.toc a[href^="#"]').forEach((a) => {
-          tocLinks.set(a.getAttribute('href')!.slice(1), a);
-        });
-        tocHeadings = Array.from(tocLinks.keys())
-          .map((id) => document.getElementById(id))
-          .filter((el): el is HTMLElement => !!el);
-      }
-      function updateTOC() {
-        if (!tocHeadings.length) return;
-        const y = window.scrollY + 120;
-        let current = tocHeadings[0];
-        for (const h of tocHeadings) { if (h.offsetTop <= y) current = h; }
-        tocLinks.forEach((a) => a.classList.remove('active'));
-        const link = current && tocLinks.get(current.id);
-        if (link) link.classList.add('active');
-      }
-
-      // ── Tag filter ──
-      function initFilter() {
-        const bar = document.querySelector('.filter');
-        if (!bar) return;
-        const items = Array.from(document.querySelectorAll<HTMLElement>('.post-list > li'));
-        bar.querySelectorAll<HTMLButtonElement>('button').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            const tag = btn.dataset.tag || 'all';
-            bar.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
-            items.forEach((li) => {
-              const tags = (li.dataset.tags || '').split(',');
-              li.style.display = tag === 'all' || tags.includes(tag) ? '' : 'none';
-            });
-          });
-        });
-      }
-
-      // ── Scroll handlers ──
-      function onScroll() {
-        const header = document.querySelector('.site-header');
-        if (header) header.classList.toggle('scrolled', window.scrollY > 8);
-        const doc = document.documentElement;
-        const max = doc.scrollHeight - window.innerHeight;
-        const pct = max > 0 ? (window.scrollY / max) * 100 : 0;
-        const bar = document.getElementById('progress');
-        if (bar) bar.style.width = pct + '%';
-        const top = document.getElementById('toTop');
-        if (top) top.classList.toggle('show', window.scrollY > 620);
-        updateTOC();
-      }
-
-      function initPage() {
-        initTOC();
-        initFilter();
-        onScroll();
-      }
-
-      if (!(window as any).__shellcatBound) {
-        (window as any).__shellcatBound = true;
-        window.addEventListener('scroll', onScroll, { passive: true });
-        window.addEventListener('resize', onScroll, { passive: true });
-        document.addEventListener('click', (e) => {
-          const t = (e.target as HTMLElement).closest('#toTop');
-          if (t) window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-      }
-
-      document.addEventListener('astro:page-load', initPage);
-    </script>
   </body>
 </html>

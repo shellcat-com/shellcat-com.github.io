@@ -1,88 +1,42 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PostCard from '../components/PostCard.astro';
 import FormattedDate from '../components/FormattedDate.astro';
-import { SITE } from '../consts';
-import { readingTime, slugify, byNewest } from '../utils';
+import { byNewest } from '../utils';
 
-const all = (await getCollection('blog', ({ data }) => !data.draft)).sort(byNewest);
-const [featured, ...rest] = all;
-
-const tagCounts = new Map<string, number>();
-for (const p of all) for (const t of p.data.tags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
-const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t]) => t);
-
-const stats = [
-  { n: all.length, label: 'write-ups' },
-  { n: '4', label: 'bug classes' },
-  { n: '∞', label: 'dead ends' },
-];
+const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(byNewest);
 ---
 <BaseLayout>
-  <section class="hero">
-    <p class="kicker">{SITE.tagline}</p>
-    <h1>
-      I find the bug, prove it, then <em>write it down.</em>
-    </h1>
-    <p class="lede">
-      Security research and bug-bounty write-ups — <strong>auth bypass</strong>,
-      <strong>SSRF</strong>, <strong>IDOR</strong>, and the business-logic flaws
-      scanners never find. No theory. Proof of concept, or it didn't happen.
-    </p>
-    <pre class="terminal-block"><span class="prompt">shellcat@hunt</span> <span class="comment">~</span> $ <span class="cmd">./recon --scope '*.target' | grep -i impact</span></pre>
-    <div class="chips">
-      {stats.map((s) => <span class="chip"><span class="n">{s.n}</span> {s.label}</span>)}
-    </div>
-  </section>
-
-  {featured && (
-    <>
-      <p class="section-divider">latest</p>
-      <a class="featured" href={`/blog/${featured.id}/`}>
-        {featured.data.heroImage ? (
-          <div class="featured__media"><img src={featured.data.heroImage} alt="" width="560" height="350" /></div>
-        ) : (
-          <div class="featured__media" style="display:grid;place-items:center;font-family:var(--font-mono);font-size:36px;color:var(--accent-dim);background:var(--bg-card)">{featured.data.title.charAt(0).toLowerCase()}_</div>
-        )}
-        <div class="featured__body">
-          <span class="badge">◆ featured</span>
-          <h2>{featured.data.title}</h2>
-          <p>{featured.data.description}</p>
-          <div class="meta">
-            <FormattedDate date={featured.data.pubDate} />
-            <span>· {readingTime(featured.body)}</span>
-            {featured.data.tags.slice(0, 2).map((t) => <span class="tag">{t}</span>)}
-          </div>
-        </div>
-      </a>
-    </>
-  )}
-
-  <p class="section-divider">writing</p>
-  {tags.length > 0 && (
-    <div class="filter" role="group" aria-label="Filter by topic">
-      <button data-tag="all" aria-pressed="true">all</button>
-      {tags.map((t) => <button data-tag={slugify(t)} aria-pressed="false">{t}</button>)}
-    </div>
-  )}
-
-  {rest.length === 0 ? (
-    <p style="color:var(--text-dim)">More write-ups landing soon.</p>
+  {posts.length === 0 ? (
+    <p class="empty-state">No write-ups yet.</p>
   ) : (
-    <ul class="post-list">
-      {rest.map((post, i) => (
-        <PostCard
-          index={i}
-          href={`/blog/${post.id}/`}
-          title={post.data.title}
-          description={post.data.description}
-          pubDate={post.data.pubDate}
-          heroImage={post.data.heroImage}
-          tags={post.data.tags}
-          readingTime={readingTime(post.body)}
-        />
+    <ol class="index-list">
+      {posts.map((post) => (
+        <li>
+          <a class="entry" href={`/blog/${post.id}/`}>
+            {post.data.heroImage ? (
+              <div class="entry__thumb">
+                <img src={post.data.heroImage} alt="" loading="lazy" width="480" height="270" />
+              </div>
+            ) : (
+              <div class="entry__thumb entry__thumb--empty">{post.data.title.charAt(0).toLowerCase()}_</div>
+            )}
+            <div class="entry__body">
+              <time class="entry__date" datetime={post.data.pubDate.toISOString()}>
+                <FormattedDate date={post.data.pubDate} />
+              </time>
+              <h2 class="entry__title">{post.data.title}</h2>
+              <p class="entry__desc">{post.data.description}</p>
+              <span class="entry__read">
+                Read
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6"/>
+                </svg>
+              </span>
+            </div>
+          </a>
+        </li>
       ))}
-    </ul>
+    </ol>
   )}
 </BaseLayout>

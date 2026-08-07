@@ -1,37 +1,19 @@
 ---
-import { SITE, NAV, SOCIALS } from '../consts';
-import Icon from './Icon.astro';
+import { SITE, SOCIALS } from '../consts';
 const year = new Date().getFullYear();
 ---
 <footer class="site-footer">
   <div class="wrap">
     <div class="col-brand">
-      <span class="fmark"><img src="/avatar.png" alt="" width="24" height="24" />{SITE.title}</span>
-      <p>{SITE.tagline}. Proof of concept, or it didn't happen.</p>
-    </div>
-    <div class="cols">
-      <div class="col">
-        <h4>navigate</h4>
-        {NAV.map((item) => <a href={item.href}>{item.label}</a>)}
-        <a href="/rss.xml">rss feed</a>
-      </div>
-      <div class="col">
-        <h4>elsewhere</h4>
-        {SOCIALS.map((s) => (
-          <a href={s.href} target={s.name === 'rss' ? undefined : '_blank'} rel={s.name === 'rss' ? undefined : 'me noopener'}>{s.label.toLowerCase()}</a>
-        ))}
-      </div>
+      <img src="/avatar.png" alt="" width="20" height="20" />
+      <span>{SITE.title} &copy; {year}</span>
     </div>
     <div class="legal">
-      <span>© {year} {SITE.title}</span>
-      <span class="socials" style="display:inline-flex;gap:14px;">
-        {SOCIALS.map((s) => (
-          <a href={s.href} aria-label={s.label} style="color:var(--text-faint)"
-             target={s.name === 'rss' ? undefined : '_blank'} rel={s.name === 'rss' ? undefined : 'me noopener'}>
-            <Icon name={s.name} />
-          </a>
-        ))}
-      </span>
+      {SOCIALS.map((s) => (
+        <a href={s.href} target={s.name === 'rss' ? undefined : '_blank'} rel={s.name === 'rss' ? undefined : 'me noopener'}>
+          {s.label.toLowerCase()}
+        </a>
+      ))}
     </div>
   </div>
 </footer>
