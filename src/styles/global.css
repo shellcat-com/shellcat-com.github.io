@@ -303,6 +303,38 @@ html.dark .theme-toggle .icon-moon { display: none; }
 .prose pre .line { color: var(--pre-text); }
 .prose pre code span { color: inherit; }
 
+/* code block wrapper — for positioning the copy button */
+.prose .pre-wrapper {
+  position: relative;
+}
+.prose .pre-wrapper pre { margin: 0; }
+
+/* copy button — top-right, visible on hover */
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-faint);
+  background: var(--pre-bg);
+  border: 1px solid var(--pre-border);
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  user-select: none;
+}
+.prose .pre-wrapper:hover .copy-btn { opacity: 1; }
+.copy-btn:hover { color: var(--pre-text); border-color: var(--text-faint); }
+.copy-btn:active { transform: scale(0.95); }
+.copy-btn.copied { color: var(--pre-text); }
+
 /* prev / next */
 .post-nav { display: flex; margin-top: 3.5em; border-top: 1px solid var(--border-dim); line-height: 1.4; }
 .post-nav a {
