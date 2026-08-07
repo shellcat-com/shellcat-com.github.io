@@ -1,6 +1,6 @@
 ---
-title: 'Recon is not collecting URLs.'
-description: 'Subdomain enumeration and URL crawling surface what everyone else is already testing. The bugs that pay are hiding in JavaScript bundles, undocumented APIs, and authentication flows — places grep will never reach. Here is how AI recon finds them.'
+title: 'How I do recon'
+description: 'Subdomain enumeration and URL crawling surface what everyone else is already testing. The bugs that pay are hiding in JavaScript bundles, undocumented APIs, and authentication flows. Here is how AI recon gets to them first.'
 pubDate: 2026-08-07
 tags: ['Recon', 'AI', 'Methodology']
 ---
