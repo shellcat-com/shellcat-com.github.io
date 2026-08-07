@@ -362,17 +362,20 @@ finding at Searchlight Cyber — a pre-auth RCE in WordPress core that exploit b
 would pay $500,000 for.
 
 The methodology is worth studying because it's the same pipeline pattern, just
-executed at higher intensity: remove `.git` so the model can't cheat by diffing
-patches, constrain to "pre-authentication in a production deployment with MySQL,"
-run parallel agents for 6+ hours with adversarial sub-agents double-checking each
-candidate, adapt OpenAI's Cycle Double Cover conjecture approach to force the model
-to keep searching past dead ends.
+executed at higher intensity: remove `.git` to force the model to reason from source
+code rather than diffing against patches, constrain to "pre-authentication in a
+production deployment with MySQL," run parallel agents for 6+ hours with adversarial
+sub-agents double-checking each candidate, and adapt OpenAI's
+[Cycle Double Cover](https://signalreads.com/articles/gpt-56-sol-ultra-produces-proof-of-the-cycle-doubl/)
+conjecture approach — a prompt pattern from GPT-5.6 Sol Ultra's unverified proof of
+the 50-year-old graph theory problem — to force the model to keep searching past dead ends.
 
 The chain itself is a masterclass in why "find the vulnerability" isn't enough. The
 bug was a batch API desynchronization — validation happens in one loop, execution
 in another, and a malformed request skips the match array, so one request's
 validation pairs with another's handler. By itself, interesting but unexploitable.
-The LLM found the desync, then found the sink (`author__not_in` bypassing `absint`),
+The LLM found the desync, then found the sink (the REST `author_exclude` parameter,
+which maps to `author__not_in` in `WP_Query`, bypassing `absint` sanitization),
 then found the cache gadget (embedding a relative URL fabricates an `oembed_cache`
 row), then found the changeset gadget (assuming admin identity), then found the
 cycle gadget (post parent repair overwrites `post_content` with attacker data), then
@@ -459,8 +462,8 @@ doesn't come from "review this finding" — it comes from "break this finding."
 
 ### 4. "What am I missing?"
 
-After I think I've thoroughly tested a target, I run one more prompt. It has never
-failed to surface something I overlooked:
+After I think I've thoroughly tested a target, I run one more prompt. It has
+repeatedly surfaced things I overlooked:
 
 ```text
 we tested {target} and found: {findings}
@@ -530,9 +533,9 @@ me exactly where."
 
 ### Race conditions
 
-LLMs understand code as sequential execution. The vulnerability exists between
-two lines — the read and the write, the check and the use — and attention
-mechanisms aren't built to spot those gaps.
+LLMs understand code as sequential execution. They rarely see concurrent code paths
+in training and can't execute code to discover interleavings — so the gap between a
+check and its corresponding use is invisible to them.
 
 **What to do instead:** ask the LLM to list every state-changing operation. Then
 you manually hunt for TOCTOU pairs, non-atomic read-increment-write patterns,
@@ -548,7 +551,7 @@ underlying primitives and thinks "what if I try..."
 
 ### Context that spans too many files
 
-Even with large context windows, LLMs lose track of subtle cross-file details. A
+Even with 200K–1M token context windows, LLMs lose track of subtle cross-file details. A
 middleware that reads `req.userId` and a handler that reads `req.params.userId` —
 the LLM might note each individually but miss that the middleware uses one source
 and the handler uses another, creating an IDOR. The vulnerability exists in the
@@ -565,13 +568,13 @@ This is what I actually spend per month, hunting 15-20 hours/week:
 
 | What | Tool | $/mo |
 |------|------|------|
-| Deep analysis, complex exploit dev | Claude Pro (Opus) | $200 |
+| Deep analysis, complex exploit dev | Claude Max (Opus) | $200 |
 | Bulk JS analysis, parameter scanning | GPT API | $80-150 |
 | Endpoint triage, filtering noise | DeepSeek API | $15-25 |
 | Adversarial validation | Local model (Ollama) | $0 |
 | **Total** | | **~$300-375** |
 
-Before AI: $150/mo Burp Pro, $30/mo VPS, and roughly 3x more hours per finding.
+Before AI: Burp Pro (~$37/mo annually), $30/mo VPS, and roughly 3x more hours per finding.
 The pipeline roughly doubles my effective hunting speed for ~$100-150 in net new
 costs.
 
