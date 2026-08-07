@@ -19,7 +19,7 @@ const { title, description, pubDate, updatedDate, heroImage, tags } = post.data;
 <BaseLayout title={title} description={description} image={heroImage} article={true} wide={true}>
   <div class="article-shell">
     <article class="article-main">
-      <header class="article-header reveal">
+      <header class="article-header">
         <a class="back" href="/">← all writing</a>
         <h1>{title}</h1>
         <div class="meta">
@@ -52,7 +52,7 @@ const { title, description, pubDate, updatedDate, heroImage, tags } = post.data;
         </nav>
       )}
 
-      <div class="author-card reveal">
+      <div class="author-card">
         <img src="/avatar.png" alt="" width="56" height="56" />
         <div>
           <div class="name">{SITE.title} <span style="color:var(--accent)">{SITE.handle}</span></div>
@@ -62,7 +62,7 @@ const { title, description, pubDate, updatedDate, heroImage, tags } = post.data;
     </article>
 
     {toc.length > 1 && (
-      <aside class="toc reveal" data-dir="right">
+      <aside class="toc">
         <p class="toc__label">on this page</p>
         <ul>
           {toc.map((h) => (

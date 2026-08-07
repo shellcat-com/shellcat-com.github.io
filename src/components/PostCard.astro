@@ -11,7 +11,7 @@ interface Props {
   readingTime?: string;
   index?: number;
 }
-const { href, title, description, pubDate, heroImage, tags = [], readingTime, index = 0 } = Astro.props;
+const { href, title, description, pubDate, tags = [], readingTime, index = 0 } = Astro.props;
 
 const tagClass = (t: string) => {
   const l = t.toLowerCase();
@@ -20,31 +20,21 @@ const tagClass = (t: string) => {
   return 'tag';
 };
 const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-const initial = title.trim().charAt(0).toLowerCase();
 ---
-<li
-  class="reveal"
-  data-dir="up"
-  data-tags={tags.map(slug).join(',')}
-  style={`--reveal-delay:${Math.min(index, 6) * 70}ms`}
->
-  <a class="post-card" href={href}>
-    {heroImage ? (
-      <div class="post-card__thumb">
-        <img src={heroImage} alt="" loading="lazy" width="300" height="188" />
-      </div>
-    ) : (
-      <div class="post-card__thumb post-card__thumb--empty">{initial}_</div>
-    )}
-    <div class="post-card__body">
-      <div class="post-card__meta">
-        <FormattedDate date={pubDate} />
-        {readingTime && <span>· {readingTime}</span>}
-        {tags.slice(0, 2).map((t) => <span class={tagClass(t)}>{t}</span>)}
-      </div>
-      <h2 class="post-card__title">{title}</h2>
-      <p class="post-card__desc">{description}</p>
-      <span class="post-card__read">read <span class="arrow">→</span></span>
+<li data-tags={tags.map(slug).join(',')}>
+  <a class="post-row" href={href}>
+    <div class="post-row__main">
+      <div class="post-row__title">{title}</div>
+      <p class="post-row__desc">{description}</p>
+    </div>
+    <div class="post-row__meta">
+      <FormattedDate date={pubDate} />
+      {readingTime && <span> · {readingTime}</span>}
+      {tags.length > 0 && (
+        <div class="post-row__tags">
+          {tags.slice(0, 2).map((t) => <span class={tagClass(t)}>{t}</span>)}
+        </div>
+      )}
     </div>
   </a>
 </li>

@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import Reveal from '../components/Reveal.astro';
 import { SITE } from '../consts';
 
 const focus = ['auth bypass', 'SSRF', 'IDOR / BOLA', 'OAuth / SSO', 'business logic', 'cloud misconfig'];
@@ -12,17 +11,17 @@ const findings = [
 ---
 <BaseLayout title="about" description={`About ${SITE.title}`}>
   <section class="about-hero">
-    <Reveal dir="left" class="frame">
-      <img src="/avatar.png" alt={`${SITE.title} mascot`} width="168" height="168" />
-    </Reveal>
-    <Reveal delay={100}>
+    <div class="frame">
+      <img src="/avatar.png" alt={`${SITE.title} mascot`} width="140" height="140" />
+    </div>
+    <div>
       <h1>{SITE.title}</h1>
       <span class="handle">{SITE.handle} · bug bounty hunter</span>
-      <div class="status"><span class="dot"></span> available for private programs & collabs</div>
-    </Reveal>
+      <div class="status"><span class="dot"></span> available for private programs &amp; collabs</div>
+    </div>
   </section>
 
-  <Reveal class="prose" delay={60}>
+  <div class="prose">
     <p>
       Independent security researcher. I break web apps, cloud infrastructure, and
       APIs for a living — then write up what actually worked. The bugs that make it
@@ -59,5 +58,5 @@ const findings = [
       Reach me through the links in the header. For anything sensitive, use an
       encrypted channel and I'll share a key.
     </p>
-  </Reveal>
+  </div>
 </BaseLayout>
