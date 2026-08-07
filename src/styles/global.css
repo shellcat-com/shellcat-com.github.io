@@ -122,7 +122,8 @@ html.js .reveal { opacity: 0; transform: translateY(20px); }
 html.js .reveal[data-dir='left']  { transform: translateX(-24px); }
 html.js .reveal[data-dir='right'] { transform: translateX(24px); }
 html.js .reveal[data-dir='scale'] { transform: scale(0.96); }
-.reveal.is-visible { opacity: 1; transform: none; }
+/* scoped under html.js so it outranks the gate above (equal-or-higher specificity) */
+html.js .reveal.is-visible { opacity: 1; transform: none; }
 
 /* ════════════════════════════  Layout  ════════════════════════════ */
 .wrap { width: 100%; max-width: var(--wrap); margin-inline: auto; padding-inline: 24px; }
