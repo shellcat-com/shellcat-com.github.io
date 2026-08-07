@@ -1,0 +1,19 @@
+---
+import { SITE, SOCIALS } from '../consts';
+import Icon from './Icon.astro';
+const year = new Date().getFullYear();
+---
+<footer class="site-footer">
+  <div class="wrap">
+    <span>© {year} {SITE.title} · built for the hunt</span>
+    <span class="socials">
+      {SOCIALS.map((s) => (
+        <a href={s.href} aria-label={s.label} title={s.label}
+           target={s.name === 'rss' ? undefined : '_blank'}
+           rel={s.name === 'rss' ? undefined : 'me noopener'}>
+          <Icon name={s.name} />
+        </a>
+      ))}
+    </span>
+  </div>
+</footer>

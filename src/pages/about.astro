@@ -1,0 +1,48 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE } from '../consts';
+---
+<BaseLayout title="about" description={`About ${SITE.title}`}>
+  <div class="about-head">
+    <img src="/avatar.png" alt={`${SITE.title} avatar`} width="92" height="92" />
+    <div>
+      <h1>{SITE.title}</h1>
+      <span class="handle">{SITE.handle}</span>
+    </div>
+  </div>
+
+  <div class="prose">
+    <p>
+      Independent security researcher and bug bounty hunter. I break web apps,
+      cloud infrastructure, and APIs for a living — then write up what actually
+      worked. Focus areas: authentication bypass, SSRF, IDOR &amp; broken access
+      control, and business-logic flaws that scanners never find.
+    </p>
+    <p>
+      This blog is where the interesting chains land — the ones where a couple of
+      "low-severity" quirks stack into something a program actually pays for.
+      Everything here is from authorized testing on programs where I had explicit
+      permission to hunt.
+    </p>
+
+    <h2>What you'll find here</h2>
+    <ul>
+      <li>Full write-ups with reproducible steps and real impact.</li>
+      <li>Short exploit notes and reusable primitives.</li>
+      <li>Methodology — how the bug was found, not just what it was.</li>
+    </ul>
+
+    <h2>Rules of engagement</h2>
+    <p>
+      No proof of concept, no post. I don't publish anything theoretical, and I
+      don't name unfixed targets. If it's here, it was reported, triaged, and
+      resolved first.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Reach me through the links in the header. For anything sensitive, use an
+      encrypted channel and I'll share a key.
+    </p>
+  </div>
+</BaseLayout>

@@ -1,0 +1,42 @@
+---
+import FormattedDate from './FormattedDate.astro';
+
+interface Props {
+  href: string;
+  title: string;
+  description: string;
+  pubDate: Date;
+  heroImage?: string;
+  tags?: string[];
+}
+const { href, title, description, pubDate, heroImage, tags = [] } = Astro.props;
+
+// severity-ish coloring for common tags
+const tagClass = (t: string) => {
+  const l = t.toLowerCase();
+  if (['critical', 'rce', 'ato'].includes(l)) return 'tag tag--crit';
+  if (['high', 'ssrf', 'idor', 'sqli'].includes(l)) return 'tag tag--high';
+  return 'tag';
+};
+const initial = title.trim().charAt(0).toLowerCase();
+---
+<li>
+  <a class="post-card" href={href}>
+    {heroImage ? (
+      <div class="post-card__thumb">
+        <img src={heroImage} alt="" loading="lazy" width="264" height="165" />
+      </div>
+    ) : (
+      <div class="post-card__thumb post-card__thumb--empty">{initial}_</div>
+    )}
+    <div class="post-card__body">
+      <div class="post-card__meta">
+        <FormattedDate date={pubDate} />
+        {tags.slice(0, 2).map((t) => <span class={tagClass(t)}>{t}</span>)}
+      </div>
+      <h2 class="post-card__title">{title}</h2>
+      <p class="post-card__desc">{description}</p>
+      <span class="post-card__read">read <span class="arrow">→</span></span>
+    </div>
+  </a>
+</li>

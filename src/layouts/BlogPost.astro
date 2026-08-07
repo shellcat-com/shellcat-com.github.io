@@ -1,0 +1,35 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import BaseLayout from './BaseLayout.astro';
+import FormattedDate from '../components/FormattedDate.astro';
+
+type Props = CollectionEntry<'blog'>['data'] & { readingTime: string };
+const { title, description, pubDate, updatedDate, heroImage, tags, readingTime } =
+  Astro.props;
+---
+<BaseLayout title={title} description={description} image={heroImage} article={true}>
+  <article>
+    <header class="article-header">
+      <a class="back" href="/">← all writing</a>
+      <h1>{title}</h1>
+      <div class="meta">
+        <FormattedDate date={pubDate} />
+        <span>·</span>
+        <span>{readingTime}</span>
+        {tags && tags.length > 0 && <span>·</span>}
+        {tags?.map((t) => <span class="tag">{t}</span>)}
+        {updatedDate && (
+          <span class="mono">· updated <FormattedDate date={updatedDate} /></span>
+        )}
+      </div>
+      {heroImage && (
+        <div class="article-hero">
+          <img src={heroImage} alt="" width="720" height="405" />
+        </div>
+      )}
+    </header>
+    <div class="prose">
+      <slot />
+    </div>
+  </article>
+</BaseLayout>

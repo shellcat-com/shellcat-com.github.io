@@ -1,0 +1,31 @@
+---
+import { SITE, NAV, SOCIALS } from '../consts';
+import Icon from './Icon.astro';
+const path = Astro.url.pathname;
+const isActive = (href: string) =>
+  href === '/' ? path === '/' : path.startsWith(href);
+---
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label={`${SITE.title} — home`}>
+      <img class="mark" src="/avatar.png" alt="" width="28" height="28" />
+      <span>{SITE.title}<span class="dot">_</span></span>
+    </a>
+    <nav class="nav" aria-label="Primary">
+      {NAV.map((item) => (
+        <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>
+          {item.label}
+        </a>
+      ))}
+      <span class="socials">
+        {SOCIALS.map((s) => (
+          <a href={s.href} aria-label={s.label} title={s.label}
+             target={s.name === 'rss' ? undefined : '_blank'}
+             rel={s.name === 'rss' ? undefined : 'me noopener'}>
+            <Icon name={s.name} />
+          </a>
+        ))}
+      </span>
+    </nav>
+  </div>
+</header>
