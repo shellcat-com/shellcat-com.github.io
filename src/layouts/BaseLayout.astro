@@ -1,4 +1,5 @@
 ---
+import { ClientRouter } from 'astro:transitions';
 import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
@@ -8,21 +9,132 @@ interface Props {
   description?: string;
   image?: string;
   article?: boolean;
+  wide?: boolean;
 }
-const props = Astro.props;
+const { wide, ...head } = Astro.props;
 ---
 <!doctype html>
 <html lang="en">
   <head>
-    <BaseHead {...props} />
+    <BaseHead {...head} />
+    <ClientRouter />
   </head>
   <body>
+    <div class="aurora" aria-hidden="true"><div class="grid"></div></div>
+    <div class="progress" id="progress" aria-hidden="true"></div>
+
     <Header />
     <main class="site-main">
-      <div class="wrap">
+      <div class:list={['wrap', { narrow: !wide }]}>
         <slot />
       </div>
     </main>
     <Footer />
+
+    <button class="to-top" id="toTop" aria-label="Back to top">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+    </button>
+
+    <script>
+      // Runs on first load AND after every view transition.
+      function initReveal() {
+        const els = document.querySelectorAll('.reveal:not(.is-visible)');
+        if (!('IntersectionObserver' in window)) {
+          els.forEach((el) => el.classList.add('is-visible'));
+          return;
+        }
+        const io = new IntersectionObserver((entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) { e.target.classList.add('is-visible'); io.unobserve(e.target); }
+          });
+        }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+        els.forEach((el) => io.observe(el));
+      }
+
+      function initTerminal() {
+        const t = document.querySelector<HTMLElement>('[data-typed]');
+        if (!t) return;
+        const full = t.dataset.typed || '';
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { t.textContent = full; return; }
+        t.textContent = '';
+        let i = 0;
+        const tick = () => {
+          if (i <= full.length) { t.textContent = full.slice(0, i); i++; setTimeout(tick, 45 + Math.random() * 40); }
+        };
+        setTimeout(tick, 450);
+      }
+
+      let tocHeadings: HTMLElement[] = [];
+      let tocLinks = new Map<string, HTMLElement>();
+      function initTOC() {
+        tocLinks = new Map();
+        document.querySelectorAll<HTMLElement>('.toc a[href^="#"]').forEach((a) => {
+          tocLinks.set(a.getAttribute('href')!.slice(1), a);
+        });
+        tocHeadings = Array.from(tocLinks.keys())
+          .map((id) => document.getElementById(id))
+          .filter((el): el is HTMLElement => !!el);
+      }
+      function updateTOC() {
+        if (!tocHeadings.length) return;
+        const y = window.scrollY + 120;
+        let current = tocHeadings[0];
+        for (const h of tocHeadings) { if (h.offsetTop <= y) current = h; }
+        tocLinks.forEach((a) => a.classList.remove('active'));
+        const link = current && tocLinks.get(current.id);
+        if (link) link.classList.add('active');
+      }
+
+      function initFilter() {
+        const bar = document.querySelector('.filter');
+        if (!bar) return;
+        const items = Array.from(document.querySelectorAll<HTMLElement>('.post-list > li'));
+        bar.querySelectorAll<HTMLButtonElement>('button').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const tag = btn.dataset.tag || 'all';
+            bar.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+            items.forEach((li) => {
+              const tags = (li.dataset.tags || '').split(',');
+              const show = tag === 'all' || tags.includes(tag);
+              li.style.display = show ? '' : 'none';
+            });
+          });
+        });
+      }
+
+      function onScroll() {
+        const header = document.querySelector('.site-header');
+        if (header) header.classList.toggle('scrolled', window.scrollY > 8);
+        const doc = document.documentElement;
+        const max = doc.scrollHeight - window.innerHeight;
+        const pct = max > 0 ? (window.scrollY / max) * 100 : 0;
+        const bar = document.getElementById('progress');
+        if (bar) bar.style.width = pct + '%';
+        const top = document.getElementById('toTop');
+        if (top) top.classList.toggle('show', window.scrollY > 620);
+        updateTOC();
+      }
+
+      function initPage() {
+        initReveal();
+        initTerminal();
+        initTOC();
+        initFilter();
+        onScroll();
+      }
+
+      // one-time global bindings (survive view transitions)
+      if (!(window as any).__shellcatBound) {
+        (window as any).__shellcatBound = true;
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll, { passive: true });
+        document.addEventListener('click', (e) => {
+          const t = (e.target as HTMLElement).closest('#toTop');
+          if (t) window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+
+      document.addEventListener('astro:page-load', initPage);
+    </script>
   </body>
 </html>

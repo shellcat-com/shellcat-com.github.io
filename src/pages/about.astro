@@ -1,42 +1,57 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Reveal from '../components/Reveal.astro';
 import { SITE } from '../consts';
+
+const focus = ['auth bypass', 'SSRF', 'IDOR / BOLA', 'OAuth / SSO', 'business logic', 'cloud misconfig'];
+const findings = [
+  { sev: 'High', text: 'Open redirect chained to OAuth token leak → one-click account takeover.' },
+  { sev: 'High', text: 'PDF-export SSRF read cloud metadata + temporary IAM credentials.' },
+  { sev: 'High', text: 'IDOR in an invoice API exposing PII across ~40k customer records.' },
+];
 ---
 <BaseLayout title="about" description={`About ${SITE.title}`}>
-  <div class="about-head">
-    <img src="/avatar.png" alt={`${SITE.title} avatar`} width="92" height="92" />
-    <div>
+  <section class="about-hero">
+    <Reveal dir="left" class="frame">
+      <img src="/avatar.png" alt={`${SITE.title} mascot`} width="168" height="168" />
+    </Reveal>
+    <Reveal delay={100}>
       <h1>{SITE.title}</h1>
-      <span class="handle">{SITE.handle}</span>
+      <span class="handle">{SITE.handle} · bug bounty hunter</span>
+      <div class="status"><span class="dot"></span> available for private programs & collabs</div>
+    </Reveal>
+  </section>
+
+  <Reveal class="prose" delay={60}>
+    <p>
+      Independent security researcher. I break web apps, cloud infrastructure, and
+      APIs for a living — then write up what actually worked. The bugs that make it
+      here are the ones where reasoning beat tooling: a couple of "informational"
+      quirks stacked into something a program genuinely paid for.
+    </p>
+
+    <h2>Focus areas</h2>
+    <div class="focus-grid">
+      {focus.map((f) => <span class="chip">{f}</span>)}
     </div>
-  </div>
-
-  <div class="prose">
     <p>
-      Independent security researcher and bug bounty hunter. I break web apps,
-      cloud infrastructure, and APIs for a living — then write up what actually
-      worked. Focus areas: authentication bypass, SSRF, IDOR &amp; broken access
-      control, and business-logic flaws that scanners never find.
-    </p>
-    <p>
-      This blog is where the interesting chains land — the ones where a couple of
-      "low-severity" quirks stack into something a program actually pays for.
-      Everything here is from authorized testing on programs where I had explicit
-      permission to hunt.
+      Everything is from authorized testing on programs where I had explicit
+      permission. I don't publish theory, and I don't name unfixed targets.
     </p>
 
-    <h2>What you'll find here</h2>
+    <h2>Selected findings</h2>
     <ul>
-      <li>Full write-ups with reproducible steps and real impact.</li>
-      <li>Short exploit notes and reusable primitives.</li>
-      <li>Methodology — how the bug was found, not just what it was.</li>
+      {findings.map((f) => (
+        <li><span class="tag tag--high" style="margin-right:8px">{f.sev}</span>{f.text}</li>
+      ))}
     </ul>
 
-    <h2>Rules of engagement</h2>
+    <h2>How I work</h2>
+    <blockquote>PC or GTFO. Proof of concept, or it doesn't exist.</blockquote>
     <p>
-      No proof of concept, no post. I don't publish anything theoretical, and I
-      don't name unfixed targets. If it's here, it was reported, triaged, and
-      resolved first.
+      No proof of concept, no post. If it's here, it was reported, triaged, and
+      resolved first — with reproducible steps and measured impact, not a wish-list
+      severity.
     </p>
 
     <h2>Contact</h2>
@@ -44,5 +59,5 @@ import { SITE } from '../consts';
       Reach me through the links in the header. For anything sensitive, use an
       encrypted channel and I'll share a key.
     </p>
-  </div>
+  </Reveal>
 </BaseLayout>

@@ -2,32 +2,95 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCard from '../components/PostCard.astro';
+import Reveal from '../components/Reveal.astro';
+import FormattedDate from '../components/FormattedDate.astro';
 import { SITE } from '../consts';
+import { readingTime, slugify, byNewest } from '../utils';
 
-const posts = (await getCollection('blog', ({ data }) => !data.draft)).sort(
-  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
-);
+const all = (await getCollection('blog', ({ data }) => !data.draft)).sort(byNewest);
+const [featured, ...rest] = all;
+
+// unique tags across posts, for the filter row
+const tagCounts = new Map<string, number>();
+for (const p of all) for (const t of p.data.tags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
+const tags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([t]) => t);
+
+const stats = [
+  { n: all.length, label: 'write-ups' },
+  { n: '4', label: 'bug classes' },
+  { n: '∞', label: 'dead ends' },
+];
 ---
 <BaseLayout>
   <section class="hero">
-    <h1>{SITE.title}<span class="accent">_</span></h1>
-    <p>{SITE.tagline}. Write-ups, exploit notes, and the occasional deep dive — proof of concept or it didn't happen.</p>
-    <p class="mono">$ ./recon --scope "*.target" | grep -i "impact"</p>
+    <p class="kicker reveal">{SITE.tagline}</p>
+    <h1 class="reveal" style="--reveal-delay:80ms">
+      I find the bug, prove it, then <em>write it down.</em>
+    </h1>
+    <p class="lede reveal" style="--reveal-delay:160ms">
+      Security research and bug-bounty write-ups — <strong>auth bypass</strong>,
+      <strong>SSRF</strong>, <strong>IDOR</strong>, and the business-logic flaws
+      scanners never find. No theory. Proof of concept, or it didn't happen.
+    </p>
+    <div class="reveal" style="--reveal-delay:240ms">
+      <span class="terminal">
+        <span class="prompt">shellcat@hunt <span style="color:var(--text-faint)">~</span> $</span>
+        <span class="typed" data-typed="./recon --scope '*.target' | grep -i impact"></span>
+        <span class="caret"></span>
+      </span>
+    </div>
+    <div class="chips reveal" style="--reveal-delay:320ms">
+      {stats.map((s) => <span class="chip"><span class="n">{s.n}</span> {s.label}</span>)}
+    </div>
   </section>
 
-  <p class="section-label">writing</p>
-  {posts.length === 0 ? (
-    <p style="color:var(--text-dim)">No posts yet. Drop a markdown file in <code>src/content/blog/</code>.</p>
+  {featured && (
+    <>
+      <p class="section-label reveal">latest</p>
+      <Reveal dir="scale">
+        <a class="featured" href={`/blog/${featured.id}/`}>
+          {featured.data.heroImage ? (
+            <div class="featured__media"><img src={featured.data.heroImage} alt="" width="560" height="385" /></div>
+          ) : (
+            <div class="featured__media post-card__thumb--empty" style="display:grid;place-items:center;font-family:var(--font-mono);font-size:40px;color:var(--accent-dim)">{featured.data.title.charAt(0).toLowerCase()}_</div>
+          )}
+          <div class="featured__body">
+            <span class="badge">◆ featured write-up</span>
+            <h2>{featured.data.title}</h2>
+            <p>{featured.data.description}</p>
+            <div class="meta">
+              <FormattedDate date={featured.data.pubDate} />
+              <span>· {readingTime(featured.body)}</span>
+              {featured.data.tags.slice(0, 2).map((t) => <span class="tag">{t}</span>)}
+            </div>
+          </div>
+        </a>
+      </Reveal>
+    </>
+  )}
+
+  <p class="section-label reveal">writing</p>
+  {tags.length > 0 && (
+    <Reveal class="filter" as="div" role="group" aria-label="Filter by topic">
+      <button data-tag="all" aria-pressed="true">all</button>
+      {tags.map((t) => <button data-tag={slugify(t)} aria-pressed="false">{t}</button>)}
+    </Reveal>
+  )}
+
+  {rest.length === 0 ? (
+    <p style="color:var(--text-dim)">More write-ups landing soon.</p>
   ) : (
     <ul class="post-list">
-      {posts.map((post) => (
+      {rest.map((post, i) => (
         <PostCard
+          index={i}
           href={`/blog/${post.id}/`}
           title={post.data.title}
           description={post.data.description}
           pubDate={post.data.pubDate}
           heroImage={post.data.heroImage}
           tags={post.data.tags}
+          readingTime={readingTime(post.body)}
         />
       ))}
     </ul>

@@ -8,23 +8,30 @@ interface Props {
   pubDate: Date;
   heroImage?: string;
   tags?: string[];
+  readingTime?: string;
+  index?: number;
 }
-const { href, title, description, pubDate, heroImage, tags = [] } = Astro.props;
+const { href, title, description, pubDate, heroImage, tags = [], readingTime, index = 0 } = Astro.props;
 
-// severity-ish coloring for common tags
 const tagClass = (t: string) => {
   const l = t.toLowerCase();
   if (['critical', 'rce', 'ato'].includes(l)) return 'tag tag--crit';
   if (['high', 'ssrf', 'idor', 'sqli'].includes(l)) return 'tag tag--high';
   return 'tag';
 };
+const slug = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 const initial = title.trim().charAt(0).toLowerCase();
 ---
-<li>
+<li
+  class="reveal"
+  data-dir="up"
+  data-tags={tags.map(slug).join(',')}
+  style={`--reveal-delay:${Math.min(index, 6) * 70}ms`}
+>
   <a class="post-card" href={href}>
     {heroImage ? (
       <div class="post-card__thumb">
-        <img src={heroImage} alt="" loading="lazy" width="264" height="165" />
+        <img src={heroImage} alt="" loading="lazy" width="300" height="188" />
       </div>
     ) : (
       <div class="post-card__thumb post-card__thumb--empty">{initial}_</div>
@@ -32,6 +39,7 @@ const initial = title.trim().charAt(0).toLowerCase();
     <div class="post-card__body">
       <div class="post-card__meta">
         <FormattedDate date={pubDate} />
+        {readingTime && <span>· {readingTime}</span>}
         {tags.slice(0, 2).map((t) => <span class={tagClass(t)}>{t}</span>)}
       </div>
       <h2 class="post-card__title">{title}</h2>

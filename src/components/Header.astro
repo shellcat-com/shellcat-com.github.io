@@ -8,12 +8,12 @@ const isActive = (href: string) =>
 <header class="site-header">
   <div class="wrap">
     <a class="brand" href="/" aria-label={`${SITE.title} — home`}>
-      <img class="mark" src="/avatar.png" alt="" width="28" height="28" />
-      <span>{SITE.title}<span class="dot">_</span></span>
+      <img class="mark" src="/avatar.png" alt="" width="30" height="30" />
+      <span>{SITE.title}<span class="cursor">_</span></span>
     </a>
     <nav class="nav" aria-label="Primary">
       {NAV.map((item) => (
-        <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>
+        <a class="navlink" href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>
           {item.label}
         </a>
       ))}

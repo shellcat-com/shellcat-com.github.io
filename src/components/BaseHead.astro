@@ -22,6 +22,8 @@ const ogUrl = new URL(image, Astro.site);
 ---
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- progressive enhancement: gate reveal animations on JS being present -->
+<script is:inline>document.documentElement.classList.add('js');</script>
 <meta name="generator" content={Astro.generator} />
 <meta name="color-scheme" content="dark" />
 <meta name="theme-color" content="#0b0d10" />
