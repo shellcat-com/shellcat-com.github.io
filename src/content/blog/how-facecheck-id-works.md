@@ -1,18 +1,17 @@
 ---
 title: "How I reverse-engineered FaceCheck.id and built my own face search engine"
-description: "A deep dive into the architecture behind billion-scale face recognition — client-side detection, ArcFace embeddings, vector similarity search, and why storing 1.4 billion faces only takes 18 terabytes, not 1.4 petabytes."
+description: "The architecture behind billion-scale face recognition — client-side detection, ArcFace embeddings, vector similarity search, and why storing 1.4 billion faces takes 13 terabytes, not 1.4 petabytes."
 pubDate: 2026-08-08
-tags: ["reverse-engineering", "face-recognition", "vector-search", "arcface", "chromadb", "architecture"]
-heroImage: ""
+tags: ["Face Recognition", "Vector Search", "ArcFace", "ChromaDB"]
 ---
 
-I found a GitHub repo called [Facecheck.id-Extractor](https://github.com/quantumthe0ry/Facecheck.id-Extractor) that extracts face search results programmatically. It got me thinking: how does a website find where any face appears online, across ~1.4 billion indexed photos, in under two seconds?
+A GitHub repo called [Facecheck.id-Extractor](https://github.com/quantumthe0ry/Facecheck.id-Extractor) used to pull FaceCheck.id search results out programmatically. How does a website find where any face appears online, across ~1.4 billion indexed photos, in seconds?
 
-So I built one. Here is everything I learned.
+So I built one.
 
 ## The question that started this
 
-FaceCheck.id claims to search 1.4 billion faces. My first thought was: _that has to be petabytes of photos_. A single compressed JPEG thumbnail is maybe 50KB. Multiply by 1.4 billion:
+FaceCheck.id's on-site counter shows roughly 1.4 billion faces indexed. My first thought was: _that has to be petabytes of photos_. A single compressed JPEG thumbnail is maybe 50KB. Multiply by 1.4 billion:
 
 ```
 50KB × 1,400,000,000 = 70,000,000,000 KB = 70 terabytes
@@ -36,43 +35,19 @@ Photo (50KB-2MB)  →  ArcFace ResNet50  →  [0.023, -0.145, 0.887, ..., 0.432]
 
 2KB per face. For 1.4 billion faces: **2.8 terabytes**.
 
-That is a $300 hard drive. Not a data center. The entire "face database" is just a giant matrix of 512-dimensional vectors and a bunch of URLs pointing back to where the original photos live.
+That is one hard drive. Not a data center. The vectors are the bare minimum — add the source URL and the metadata each record carries (the record box below sums to roughly 9KB per face) and the full index lands near 13 terabytes. Still one hard drive. The entire "face database" is a giant matrix of 512-dimensional vectors and a bunch of URLs pointing back to where the original photos live.
 
 ## The pipeline
 
-Every face search engine — FaceCheck.id, PimEyes, Clearview, and mine — follows the same five-step pipeline:
+Every embedding-based face search engine — FaceCheck.id, PimEyes, Clearview, and mine — runs the same five steps:
 
 ```
-                    ┌──────────────────────┐
-  1. UPLOAD         │  User uploads photo  │
-                    └──────────┬───────────┘
-                               ▼
-                    ┌──────────────────────┐
-  2. DETECT         │  Find the face in    │
-                    │  the image (SCRFD)   │
-                    └──────────┬───────────┘
-                               ▼
-                    ┌──────────────────────┐
-  3. EMBED          │  Convert face to     │
-                    │  512-dim vector      │
-                    │  (ArcFace R50)       │
-                    └──────────┬───────────┘
-                               ▼
-                    ┌──────────────────────┐
-  4. SEARCH         │  Cosine similarity   │
-                    │  against N vectors   │
-                    │  in the database     │
-                    └──────────┬───────────┘
-                               ▼
-                    ┌──────────────────────┐
-  5. RETURN         │  Top-K matches       │
-                    │  with source URLs    │
-                    └──────────────────────┘
+upload → detect (SCRFD) → embed (ArcFace R50, 512-dim) → cosine search → top-K + source URLs
 ```
 
 Steps 1-3 happen in RAM. The uploaded photo lives in memory for about two seconds, gets converted to a vector, and then gets garbage-collected. Nothing is written to disk. The result photos shown to the user load from their original source URLs — FBI servers, public Instagram CDN, whatever — directly in the user's browser. They never pass through the search server at all.
 
-Step 4 is the interesting part. Cosine similarity between two 512-dimensional vectors is just a dot product. With HNSW indexing (what ChromaDB uses), searching a million faces takes milliseconds. At billion scale, you shard across machines and use approximate nearest neighbor (ANN) with IVF-PQ quantization — tiny accuracy loss, massive speed gain.
+Step 4 is the interesting part. Cosine similarity between two 512-dimensional vectors is just a dot product. With HNSW indexing (what ChromaDB uses), my 252-face index answers a query in about a millisecond, and a million faces takes milliseconds. At billion scale, you shard across machines and use approximate nearest neighbor (ANN) with IVF-PQ quantization — tiny accuracy loss, massive speed gain.
 
 ## What I built
 
@@ -89,7 +64,7 @@ My implementation uses:
 - ONNX Runtime with CoreML acceleration on Apple Silicon
 - ChromaDB with HNSW cosine similarity for vector search
 
-**Two face detectors is deliberate.** The browser one gives instant UX feedback. The server one (SCRFD) is far more accurate and produces the 512-dim ArcFace embedding used for actual matching. The browser's 128-dim descriptor is a fallback.
+Running two face detectors is deliberate. The browser one gives instant UX feedback. The server one (SCRFD) is far more accurate and produces the 512-dim ArcFace embedding used for actual matching. The browser's 128-dim descriptor is a fallback.
 
 **Pipeline (RAM-only, no disk):**
 
@@ -104,22 +79,22 @@ return enriched_results                                # image bytes: garbage co
 **Seeding the database:**
 
 ```python
-# Download image to RAM → extract face → store vector → discard image
-image_bytes = await download_image_bytes(url)          # RAM only
-faces = await embedder.embed_bytes(image_bytes)        # 512-dim from bytes
-vector_store.add_face(embedding, source_url, ...)      # store 2KB vector + URL
-# image_bytes falls out of scope → freed by GC
+# Download image to data/images/<category>/ → embed → store vector → keep URL
+local_path = await download_face_image(url, download_dir)   # disk cache
+faces = await embedder.embed_image(local_path, threshold=0.4)
+vector_store.add_face(faces[0]["embedding"], source_url, ...)  # 2KB vector + URL
+# local_path stays as a processing cache; the photo's real home is fbi.gov
 ```
 
-Every image is downloaded, processed, and discarded. What persists in ChromaDB is exactly 512 floats plus a source URL. The photos you see in search results load directly from `fbi.gov` in your browser.
+Seeding caches originals on disk — that is the one place a photo lands in my pipeline, and it is a local processing cache, not the search database. Search itself is RAM-only. What persists in ChromaDB is exactly 512 floats plus a source URL and a few metadata fields. The photos you see in search results load directly from `fbi.gov` in your browser.
 
 ## Where the data comes from
 
-FaceCheck.id has 50+ crawlers running 24/7. Public sources only — nothing behind authentication:
+FaceCheck.id's own disclaimer says every image it indexes comes from public, readily available web pages. Feeding a 1.4-billion-face index from public pages means a fleet of crawlers running around the clock:
 
 | Source | How they get it |
 |---|---|
-| VK (Russian Facebook) | Extremely open API. Public profiles have essentially no privacy. |
+| VK (Russian Facebook) | Unusually open API — tokenless calls work for public profiles. |
 | Instagram | Public profiles only. Profile photo CDN URLs are unauthenticated. |
 | TikTok | Public profile photos. CDN direct links. |
 | FBI Wanted | Free public API: `api.fbi.gov/@wanted` |
@@ -133,32 +108,25 @@ The other crawlers (Instagram, TikTok, registries) I wrote the code for but they
 
 ## What each database record looks like
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  id:              a1b2c3d4-...                            │
-│  embedding:       [0.023, -0.145, 0.887, ...]  ← 512 floats │
-│  source_url:      https://www.fbi.gov/wanted/cei/john-doe │
-│  thumbnail_url:   https://www.fbi.gov/.../image/large     │
-│  title:           JOHN DOE — FBI Most Wanted               │
-│  category:        mugshot                                  │
-│  crimes:          Murder, Racketeering, Drug Trafficking   │
-│  reward:          Up to $250,000                            │
-│  physical:        {sex: Male, race: White, eyes: Brown,    │
-│                    height: 5'11", weight: 180 lbs}         │
-│  source:          fbi                                      │
-│  indexed_at:      2026-08-08T14:30:00Z                     │
-│                                                           │
-│  Photo?           NOT HERE — lives on fbi.gov              │
-└─────────────────────────────────────────────────────────┘
+```text
+id:            a1b2c3d4-...
+embedding:     [0.023, -0.145, 0.887, ...]        ← 512 floats
+source_url:    https://www.fbi.gov/wanted/cei/john-doe
+thumbnail_url: https://www.fbi.gov/.../image/large
+title:         JOHN DOE — FBI Most Wanted
+crimes:        Murder, Racketeering, Drug Trafficking
+reward:        Up to $250,000
+indexed_at:    2026-08-08T14:30:00Z
+photo:         NOT HERE — lives on fbi.gov
 ```
 
 Total: roughly 9KB per face. The photo loads from `thumbnail_url` — FBI's CDN, not ours.
 
-## Why Crawlers Are Harder Than Models
+## Why crawlers are harder than models
 
 The machine learning part took a day. The InsightFace buffalo_l model works out of the box. ONNX Runtime handles GPU/CoreML acceleration. ChromaDB is a `pip install`. The five-step pipeline is maybe 200 lines of Python.
 
-The crawlers took a week and mostly do not work. Here is why:
+The crawlers took a week and mostly do not work:
 
 ```python
 # What I wrote:
@@ -177,42 +145,39 @@ Production crawlers need:
 
 The code is not the product. **The proxy fleet is the product.** FaceCheck.id did not solve face recognition — they solved web crawling at scale.
 
-## The FaceCheck.id API Format
+## The FaceCheck.id API format
 
 The extractor repo I found revealed their internal API format:
 
 ```json
 // POST /api/search
 {
-    "id_search": "<session_token>",
+    "id_search": "<id from the URL after uploading>",
     "with_progress": true,
-    "status_only": false,
+    "status_only": true,
     "demo": false
 }
 
 // Response
 {
-    "data": {
-        "output": {
-            "items": [
-                {
-                    "base64": "<result image as base64>",
-                    "score": 94,
-                    // source URLs encoded inside the image itself (steganography)
-                }
-            ]
-        }
+    "output": {
+        "items": [
+            {
+                "base64": "<result image as base64>",
+                "score": 94
+            }
+        ]
     }
 }
 ```
 
-They embed source URLs inside the result images as base64-encoded data — a crude but effective anti-scraping measure. The extractor tool reads those URLs back out. My implementation uses the same upload/search endpoint structure for compatibility.
+They embedded source URLs inside the result images as base64-encoded data — an anti-scraping measure that doubled as the extractor's extraction mechanism. The repo decodes the base64 and regexes `"url":"https://..."` out of the image bytes. FaceCheck moved the URLs out of the images — the repo's README says the technique stopped working. My implementation keeps the same path — `POST /api/search` — but takes a multipart file upload instead of their JSON session payload.
 
-## What I Would Do Differently
+## What I would do differently
 
 **Start with the database, not the model.** Face recognition models are commodity. ArcFace, MagFace, AdaFace — they all produce embeddings. The model is 1% of the work. 99% is getting faces _into_ the database.
 
-**Use existing datasets for the initial seed.** VGGFace2 has 3.3 million faces from public figures. IMDB-Wiki has 500K celebrity faces. CelebA has 200K. All free, all legal for research. Download once, embed once, done. That would have given me a real searchable database instead of 252 test faces.
+**Use existing datasets for the initial seed.** VGGFace2 has 3.3 million faces from public figures. IMDB-Wiki has 500K celebrity faces. CelebA has 200K. All free, all legal for non-commercial research — which means a product can't legally use them, only a prototype can. Download once, embed once, done. That would have given me a real searchable database instead of 252 faces.
 
 **The crawler architecture is the moat.** A billion-face index is not a machine learning problem. It is a distributed crawling problem. Rotating proxies, headless browsers, per-platform parsers, and a pipeline that processes thousands of faces per second continuously. The crawlers ARE the startup.
 
@@ -227,4 +192,4 @@ cd backend && bash run.sh &   # starts on :8000
 npm install && npm run dev     # starts on :3000
 ```
 
-The architecture is correct. The pipeline is identical to FaceCheck.id. The database just has 252 faces instead of 1.4 billion — and fixing that is a crawling infrastructure problem, not a code problem.
+The architecture is correct. The pipeline is a faithful reconstruction of FaceCheck.id's. The database just has 252 faces instead of 1.4 billion — and fixing that is a crawling infrastructure problem, not a code problem.
