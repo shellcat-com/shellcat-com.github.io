@@ -1,0 +1,28 @@
+---
+const { url, title } = Astro.props;
+const tweet = `https://x.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`;
+const mail = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(url)}`;
+---
+<div class="share-bar">
+  <span class="share-label">share</span>
+  <button class="share-btn" id="copyLinkBtn" data-url={url}>copy link</button>
+  <a class="share-btn" href={tweet} target="_blank" rel="noopener noreferrer">x</a>
+  <a class="share-btn" href={mail}>email</a>
+</div>
+
+<script>
+  const btn = document.getElementById('copyLinkBtn');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(btn.dataset.url || window.location.href);
+        btn.textContent = 'copied';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'copy link'; btn.classList.remove('copied'); }, 1500);
+      } catch {
+        btn.textContent = 'failed';
+        setTimeout(() => { btn.textContent = 'copy link'; }, 1200);
+      }
+    });
+  }
+</script>

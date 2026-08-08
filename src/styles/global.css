@@ -335,6 +335,33 @@ html.dark .theme-toggle .icon-moon { display: none; }
 .copy-btn:active { transform: scale(0.95); }
 .copy-btn.copied { color: var(--pre-text); }
 
+/* share bar */
+.share-bar {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 2em; padding-top: 16px;
+  border-top: 1px solid var(--border-dim);
+}
+.share-label {
+  font-size: 12px; color: var(--text-faint);
+  margin-right: 4px;
+}
+.share-btn {
+  font-family: var(--font-mono);
+  font-size: 11px; line-height: 1;
+  padding: 4px 10px;
+  color: var(--text-dim);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 0.12s, color 0.12s;
+  user-select: none;
+}
+.share-btn:hover { color: var(--heading); border-color: var(--text-faint); }
+.share-btn:active { transform: scale(0.96); }
+.share-btn.copied { color: var(--heading); }
+
 /* prev / next */
 .post-nav { display: flex; margin-top: 3.5em; border-top: 1px solid var(--border-dim); line-height: 1.4; }
 .post-nav a {
