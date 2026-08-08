@@ -5,7 +5,7 @@ import sitemap from '@astrojs/sitemap';
 // https://astro.build/config
 export default defineConfig({
   // Live URL — GitHub Pages user site. Change if you move to a custom domain.
-  site: 'https://bswxyz.github.io',
+  site: 'https://shellcat-com.github.io',
   integrations: [sitemap()],
   markdown: {
     shikiConfig: {
