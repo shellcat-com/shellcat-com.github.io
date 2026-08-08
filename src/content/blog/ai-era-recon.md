@@ -463,3 +463,36 @@ and reading code is the thing that separates a finding from a list of URLs.
 
 Recon is not collecting 60,000 URLs. Recon is knowing which three to test.
 Everything else is preparation.
+
+## Automating the pipeline
+
+The methodology above is seven discrete steps — each with its own tool invocation,
+output file, and handoff to the next step. I got tired of running them one at a time
+and built an automation layer that collapses all of it into one command.
+
+It is called [BBHUNTER](https://github.com/bswxyz/bbhunter). You give it a domain.
+It runs 13 phases across 21 tools — passive subdomain enumeration, active DNS
+bruteforce, ASN/CIDR mapping, WAF detection and origin IP discovery, live host
+probing with tech stack fingerprinting, virtual host enumeration, URL discovery
+(wayback + gau + katana + gospider + hakrawler), JavaScript bundle collection,
+directory fuzzing, GitHub dorking, port scanning, Nuclei CVE scanning, and
+subdomain takeover checks.
+
+It does not find bugs. It builds the complete attack surface and classifies it:
+API endpoints ready for IDOR testing, URLs with injectable parameters, admin and
+internal paths, JavaScript bundles for manual analysis, IDOR candidates with
+numeric IDs. The output feeds directly into the hunting layer — the JS bundle
+analysis prompt, the API mapping prompt, the hypothesis generation prompt. The
+pipeline does the collection and classification. You do the thinking.
+
+```bash
+# One command. All seven steps from this post.
+bbhunter recon target.com
+
+# Then hunt from the classified output.
+bbhunter hunt target.com
+```
+
+Install: `curl -sL https://raw.githubusercontent.com/bswxyz/bbhunter/main/install.sh | bash`
+
+The methodology is the engine. The pipeline is just the starter motor.
