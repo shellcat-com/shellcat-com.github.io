@@ -470,7 +470,7 @@ The methodology above is seven discrete steps — each with its own tool invocat
 output file, and handoff to the next step. I got tired of running them one at a time
 and built an automation layer that collapses all of it into one command.
 
-It is called [BBHUNTER](https://github.com/bswxyz/bbhunter). You give it a domain.
+It is called [BBHUNTER](https://github.com/shellcat-com/bbhunter). You give it a domain.
 It runs 13 phases across 21 tools — passive subdomain enumeration, active DNS
 bruteforce, ASN/CIDR mapping, WAF detection and origin IP discovery, live host
 probing with tech stack fingerprinting, virtual host enumeration, URL discovery
@@ -493,6 +493,6 @@ bbhunter recon target.com
 bbhunter hunt target.com
 ```
 
-Install: `curl -sL https://raw.githubusercontent.com/bswxyz/bbhunter/main/install.sh | bash`
+Install: `curl -sL https://raw.githubusercontent.com/shellcat-com/bbhunter/main/install.sh | bash`
 
 The methodology is the engine. The pipeline is just the starter motor.
