@@ -9,11 +9,11 @@ A GitHub repo called [Facecheck.id-Extractor](https://github.com/quantumthe0ry/F
 
 That repo is why I wrote this. Scraping the output told me nothing about the engine. So I built the engine.
 
-The [concept post](/blog/how-facecheck-id-works/) covers the argument for why a 1.4-billion-face index fits on one hard drive. This post is the code — the actual pipeline, the actual data structures, and the two places where I got it wrong the first time.
+This is the build log — the actual pipeline, the actual data structures, and the two places I got it wrong the first time.
 
 ## The number that decides the architecture
 
-Short version, because the concept post has the long one. FaceCheck's counter says ~1.4 billion faces. A 50KB thumbnail times 1.4 billion is 70TB, and full-resolution photos are roughly 10× that. Nobody stores 700TB of photos that already live on `fbi.gov`, Instagram, and VK.
+The short version, since it dictates everything below. FaceCheck's counter says ~1.4 billion faces. A 50KB thumbnail times 1.4 billion is 70TB, and full-resolution photos are roughly 10× that. Nobody stores 700TB of photos that already live on `fbi.gov`, Instagram, and VK.
 
 A face is not a photo. Run it through ArcFace and you get 512 float32 numbers. That is exactly 2,048 bytes:
 
@@ -59,7 +59,7 @@ ArcFace vectors are compared by angle, not magnitude — that is what cosine sim
 
 ## Two detectors, and the thing I got wrong
 
-The concept post said the browser's face descriptor was a search "fallback." That was wrong. Correcting it here, because the mistake is exactly the kind of thing that sounds right and isn't.
+It is tempting to call the browser's face descriptor a search "fallback." That is wrong, and it is exactly the kind of thing that sounds right and isn't.
 
 There are two detectors in this system, and they exist for two unrelated reasons.
 
