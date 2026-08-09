@@ -15,13 +15,13 @@ output surfaces.
 
 The difference between finding 200 subdomains and finding the one hosting an
 unprotected GraphQL endpoint with introspection enabled is not a better
-wordlist. It is not running Amass with different flags. It is **AI**. Not AI as
-an oracle that tells you where the bugs are. AI as a component that reads what
-your tools collect and finds the signal.
+wordlist, and it is not running Amass with different flags. It is **AI** — not
+playing oracle, but sitting downstream of your existing tools, reading what they
+collect and pulling the signal out of the noise.
 
 Here is how it works.
 
-## Traditional recon gives you a haystack. AI gives you a classifier.
+## Collection was never the hard part
 
 Run a full recon sweep against a medium-sized program. You get back: 800
 subdomains, 320 live hosts, 1,400 screenshots, 60,000 URLs. Now what?
@@ -112,34 +112,33 @@ Rules:
 
 ### 4. What comes back
 
-This is not theoretical. I have found the following in production JavaScript
-bundles, every one of them invisible to grep-and-URL-collection recon:
+None of these are hypothetical categories. They are the kinds of things this
+approach surfaces that grep-and-URL-collection recon walks straight past:
 
-- **An undocumented `/api/internal-graphql` endpoint** with introspection
-  enabled, serving the full schema including mutations that let admins
-  impersonate any user. The endpoint existed in exactly one place: a webpack
-  chunk loaded only for admin-role users. The bundle was fetched client-side for
-  *all* users — only the rendering was gated. The endpoint wasn't.
+- **An undocumented internal GraphQL endpoint** with introspection enabled,
+  serving the full schema — including mutations that let admins impersonate any
+  user. The endpoint lives in exactly one place: a webpack chunk loaded only for
+  admin-role users. But the bundle is fetched client-side for *every* user —
+  only the rendering is gated. The endpoint isn't.
 
-- **A Stripe live secret key** (`sk_live_...`) in a vendor bundle. Committed in
-  2019, minified to the variable name `a7b`. No grep pattern would have caught
-  it. The LLM recognized it because the minified variable appeared next to
-  `stripe.charges.create`.
+- **A live payment-provider secret key** (`sk_live_...`) buried in a vendor
+  bundle, minified down to a two-character variable name. No regex catches it
+  once it has been renamed. An LLM flags it because the minified variable sits
+  one line away from a `charges.create` call — it reads the context, not the
+  string.
 
-- **A `staff_impersonate` feature flag** set to `false` in production but with
-  the entire UI and API logic already built. The flag was a single string in a
-  4.7MB main bundle. The LLM found it because it was told to look for any string
-  containing "admin", "staff", "impersonate", or "superuser."
+- **A `staff_impersonate` feature flag** shipped `false` in production with the
+  entire UI and API path already built behind it. It is a single string in a
+  multi-megabyte main bundle. The LLM finds it because it was told to surface any
+  toggle containing "admin", "staff", "impersonate", or "superuser."
 
-- **An internal hostname** (`api-legacy.internal.target.com`) hardcoded in a
-  service worker. The host was not in DNS, not in certificate transparency logs,
-  not returned by any subdomain enumeration tool. It resolved only from inside
-  the corporate VPN. But knowing it existed told me what to look for when the
-  company acquired a smaller startup six months later — same hostname pattern,
-  same infrastructure, more vulnerable.
+- **An internal hostname** hardcoded in a service worker — absent from DNS, from
+  certificate transparency, from every subdomain tool, resolvable only inside the
+  corporate VPN. Knowing the naming pattern exists is what tells you where to
+  look when that same infrastructure turns up on an acquired subsidiary later.
 
-Traditional recon cannot surface any of these because traditional recon does not
-read code. It collects URLs. Reading is the thing that matters.
+Grep-and-collect recon walks past all of these for one reason: it never reads the
+code. Reading is the part that matters.
 
 ## Phase 2 — API surface mapping
 
@@ -177,8 +176,9 @@ because a developer built it for an internal dashboard and never documented it.
 
 ### GraphQL reconnaissance
 
-Every SaaS product built after 2021 uses GraphQL somewhere. Ignoring it in 2026
-is leaving bugs on the table.
+A large share of SaaS products built in the last few years expose GraphQL
+somewhere — often on an endpoint the UI never touches. Skipping it in 2026 leaves
+bugs on the table.
 
 The recon:
 
@@ -194,8 +194,8 @@ curl -s https://app.target.com/graphql \
   | jq '.data.__schema.types[] | select(.fields != null) | {name, fields: [.fields[].name]}'
 ```
 
-If introspection is on — and it is, on nearly every forgotten internal GraphQL
-endpoint — you just got the complete data model. Every type, every field, every
+If introspection is on — and on forgotten internal GraphQL endpoints it very
+often is — you just got the complete data model. Every type, every field, every
 mutation. Now feed that schema to an LLM:
 
 ```text
@@ -213,8 +213,8 @@ For each finding, provide the exact query/mutation name and the argument
 that would exploit it.
 ```
 
-The LLM is not finding the bug. It is reading the schema and pointing you at
-the 12 most suspicious queries out of 340. You test those 12.
+The LLM reads the schema and points you at the dozen most suspicious queries out
+of 340, so you test those instead of all of them.
 
 ## Phase 3 — Authentication surface mapping
 
@@ -303,13 +303,14 @@ ranks above low-confidence open redirect. Do not generate hypotheses for known
 informational issues (missing headers, CORS, rate limiting).
 ```
 
-Feed the output to a second model — the adversarial validator from my pipeline
-post — and let it kill the weak ones before you waste a single Burp request.
-The model that found the hypothesis must not be the model that validates it.
+Feed the output to a second model — [the adversarial validator from my pipeline
+post](/blog/ai-bug-hunting-pipeline/) — and let it kill the weak ones before you
+waste a single Burp request. The model that generates a hypothesis should never
+be the one that validates it.
 
-You do not start testing until you have hypotheses. You do not "explore."
-Exploration without hypothesis is browsing. Browsing does not find bugs.
-Targeted testing against specific predictions finds bugs.
+You do not start testing until you have hypotheses. Exploration without a
+hypothesis is just browsing, and browsing rarely turns up anything — you want to
+be probing specific predictions, not wandering the attack surface.
 
 ## The economics
 
@@ -331,9 +332,10 @@ tools, review the output, and sanity-check anything that looks weird. But you
 are reviewing structured findings, not raw lists. You are testing hypotheses,
 not poking blindly at URLs.
 
-The cost: roughly $8–15 per engagement in API credits across Claude API, GPT-4o,
-and DeepSeek. At 12 programs a month, that is $96–180. It pays for itself if it
-finds one extra Medium-severity bug. It routinely finds more than that.
+The cost: roughly $8–15 per engagement in API credits across Claude, GPT, and
+DeepSeek. At a dozen programs a month, that is on the order of $100–180 — it pays
+for itself the first time it surfaces one extra Medium-severity bug, and in
+practice it tends to surface more.
 
 ## What stays deterministic
 
@@ -342,8 +344,10 @@ Some things are binary. They either work or they don't. No AI improves them.
 - **DNS resolution.** shuffledns or massdns. A hostname resolves or it doesn't.
   Do not ask an LLM.
 - **Port scanning.** nmap or rustscan. TCP responds or it doesn't.
-- **Screenshots.** Aquatone or gowitness. You need to see what's there. An LLM
-  cannot look at a login page and identify it as Jenkins. (Yet.)
+- **Screenshots.** Aquatone or gowitness. Capturing the image is deterministic —
+  point a headless browser at a host and it renders. A multimodal model *can*
+  then read that screenshot and tell you it's a Jenkins login, which is worth
+  doing — but the capture itself is a tool's job, not a prompt's.
 - **Certificate transparency logs.** crt.sh. This is database lookup, not
   analysis. Run it.
 - **Technology fingerprinting.** Wappalyzer or whatweb. Deterministic pattern
@@ -366,8 +370,8 @@ assetfinder target.com >> subs.txt
 amass enum -passive -d target.com >> subs.txt
 # GitHub enumeration
 github-subdomains -d target.com -t $GITHUB_TOKEN >> subs.txt
-# Shodan
-shodan domain target.com | jq -r '.subdomains[]' >> subs.txt
+# Shodan (the CLI prints a plain-text table, not JSON — take the first column)
+shodan domain target.com | awk 'NR>1 && $1 != "" {print $1".target.com"}' >> subs.txt
 cat subs.txt | sort -u > subs_clean.txt
 ```
 
@@ -426,29 +430,32 @@ costs maybe two minutes. Every true positive is a finding.
 
 ## What this looks like in practice
 
-Two weeks ago, against a live program:
+Here is the shape of a single morning's run — a composite of how the pieces fit
+together, not a specific engagement:
 
-- **09:00** — Subdomain enumeration. 743 subdomains.
-- **09:15** — Live host detection. 201 live hosts. Flagged: `api-admin.target.com`
-  (403) and `internal.target.com` (200, entirely different tech stack from the
-  main app).
-- **09:30** — URL crawling complete. 41,000 URLs. JS filter: 810 `.js` files.
-- **10:15** — JS bundle analysis finished. 14 findings from the AI. The one that
-  mattered: an endpoint `/api/v1/internal/users/bulk-import` referenced in a
-  webpack chunk comment that read `// TODO: remove this before launch — @josh`.
-- **10:30** — `/api/v1/internal/users/bulk-import` returned 401 without the
-  right header. But the admin panel at `api-admin.target.com` accepted a
-  `X-Internal-Token: dev-2024` header — found in the **same** webpack chunk.
-  The endpoint with that header returned the full user table: 340,000 records
-  including email, phone, and hashed password.
-- **10:45** — Report draft started. Unauthenticated mass PII exposure via a
-  hardcoded internal token committed to a public JavaScript bundle.
+- **00:00** — Subdomain enumeration. A few hundred subdomains.
+- **00:15** — Live host detection. Two hosts stand out: an `api-admin` host
+  returning 403, and an `internal` host on an entirely different tech stack from
+  the main app.
+- **00:30** — URL crawling done. Tens of thousands of URLs; the JS filter cuts
+  that to a few hundred `.js` files.
+- **01:15** — JS bundle analysis finished. A dozen-odd findings from the AI. The
+  one that matters: an internal `bulk-import` endpoint referenced only inside a
+  webpack chunk, next to a comment reading `// TODO: remove before launch`.
+- **01:30** — The endpoint returns 401 on its own. But the same webpack chunk
+  also carries a hardcoded `X-Internal-Token` value, and the `api-admin` host
+  accepts it. That is the whole chain: a token that was never meant to ship,
+  bundled into client-side JavaScript, gating an endpoint that reads the user
+  table.
+- **01:45** — Report draft. Unauthenticated PII exposure via a hardcoded
+  internal token committed to a public JavaScript bundle.
 
-Total recon-to-report: 1 hour 45 minutes. Traditional subdomain enumeration
-never saw the `api-admin` host — it returned 403 to HTTPX. The AI found it
-because the JS bundle referenced it by name, and the AI read the bundle.
+Under two hours, recon to draft. Traditional subdomain enumeration never sees the
+`api-admin` host — it returns 403 to HTTPX and falls off the list. The chain only
+exists because the JS bundle names the host and the token, and the AI read the
+bundle instead of just collecting its URL.
 
-## The tools didn't break. The game just changed.
+## Why the old playbook stopped paying
 
 Every hunter runs the same tools against the same targets. The programs have
 already triaged the bugs those tools surface. The easy findings from four years
@@ -458,8 +465,8 @@ report them.
 The bugs that pay now are hiding where grep cannot look: inside compiled
 bundles, inside undocumented APIs, inside authentication flows spread across
 twelve subdomains, inside feature flags that ship disabled but have all the
-logic built. AI recon goes there. Not because AI is magic. Because AI reads,
-and reading code is the thing that separates a finding from a list of URLs.
+logic built. AI recon goes there — not because it is magic, but because it reads,
+and reading code is what separates a finding from a list of URLs.
 
 Recon is not collecting 60,000 URLs. Recon is knowing which three to test.
 Everything else is preparation.
@@ -478,10 +485,10 @@ probing with tech stack fingerprinting, virtual host enumeration, URL discovery
 directory fuzzing, GitHub dorking, port scanning, Nuclei CVE scanning, and
 subdomain takeover checks.
 
-It does not find bugs. It builds the complete attack surface and classifies it:
-API endpoints ready for IDOR testing, URLs with injectable parameters, admin and
-internal paths, JavaScript bundles for manual analysis, IDOR candidates with
-numeric IDs. The output feeds directly into the hunting layer — the JS bundle
+It will not find bugs for you. What it does is build the complete attack surface
+and classify it: API endpoints ready for IDOR testing, URLs with injectable
+parameters, admin and internal paths, JavaScript bundles for manual analysis,
+IDOR candidates with numeric IDs. The output feeds directly into the hunting layer — the JS bundle
 analysis prompt, the API mapping prompt, the hypothesis generation prompt. The
 pipeline does the collection and classification. You do the thinking.
 
@@ -495,4 +502,4 @@ bbhunter hunt target.com
 
 Install: `curl -sL https://raw.githubusercontent.com/shellcat-com/bbhunter/main/install.sh | bash`
 
-The methodology is the engine. The pipeline is just the starter motor.
+The methodology is the engine; the pipeline just turns it over faster.
