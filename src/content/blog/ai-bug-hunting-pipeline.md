@@ -1,6 +1,6 @@
 ---
 title: 'The model that finds the bug will defend the bug'
-description: 'The rule that made my AI pipeline work: never let the model that found the bug judge it. Three validation rounds kill 80%% of AI-generated findings. Here''s the architecture, the prompts, and the dead ends.'
+description: 'The rule that made my AI pipeline work: never let the model that found the bug judge it. Three validation rounds kill 80% of AI-generated findings. Here''s the architecture, the prompts, and the dead ends.'
 pubDate: 2026-08-04
 tags: ['AI', 'Methodology', 'Tooling']
 ---
@@ -10,7 +10,7 @@ MySQL 8.0, stack traces in the response. I was already mentally writing the repo
 The gate killed it. The database was
 `analytics_proxy`. The "users" table was `user_agents` browser strings. Every byte
 of it was already public. Two hours of exploitation I'd have burned without the
-gate — the adversarial validator whose entire job is to **disprove** what the rest
+gate — the adversarial gate whose entire job is to **break** what the rest
 of the pipeline discovers.
 
 Everyone is using AI wrong in bug bounty.
@@ -37,19 +37,19 @@ actually deserialization, a "one prompt to rule them all" phase I'm embarrassed 
 admit lasted two months — I landed on four stages:
 
 ```text
-Recon → Hypothesis Generation → Adversarial Gate → Exploitation
-  ↑            ↑                      ↑                  ↑
-  LLM          LLM             3 validation rounds      LLM
-  (volume)     (creative)      (separate instances)     (precision)
+Recon ─→ Hypotheses ─→ Focused Weirdness ─→ Adversarial Gate ─→ Exploitation
+DeepSeek    Codex       revisit anomalies      Claude Opus         Codex
+(volume)   (hunting)    (83% of findings)      (P8 → P9 → P10)     (precision)
+
+           └──── loops through 14 surfaces until exhausted ────┘
 ```
 
-Each stage feeds the next. Nothing generates a hypothesis without clean recon data.
-Nothing reaches the gate without a specific, testable hypothesis. Nothing reaches
-exploitation without surviving validation — and here's the part you cannot skip:
-**you cannot use the same model instance for discovery and validation.** The model
-that found the bug will defend the bug, same way a developer defends their own code.
-You need a completely separate instance with a completely separate prompt whose
-entire job is destruction.
+Each stage runs on a different model, and that split isn't about cost. DeepSeek does
+the cheap volume work. Codex does the sustained multi-agent hunting. Claude Opus runs
+the gate — and it has to be a different model than the one that found the bug, for the
+reason in the title. **The finder will defend the bug**, same way a developer defends
+their own code. Discovery and validation run on different models, in different
+sessions, with opposite instructions: one paid to find, the other paid to destroy.
 
 ## Phase 1: Recon at machine scale
 
@@ -112,10 +112,9 @@ What this has surfaced:
 
 - **An internal GraphQL endpoint at `/api/internal-graphql`** with introspection
   enabled, no auth required. Referenced in a single comment in a minified file.
-  Grep would find the string — but it wouldn't understand that `/api/internal-graphql`
-  was a separate, unprotected endpoint distinct from the public `/graphql`. The LLM
-  read it as natural language and understood
-  from context that this was separate from the public `/graphql`.
+  Grep would find the string. It wouldn't understand that `/api/internal-graphql`
+  was a separate, unprotected endpoint distinct from the public `/graphql` — which
+  is exactly what the LLM read from the surrounding comment.
 
 ### What doesn't work
 
@@ -230,81 +229,127 @@ endpoints. Business logic in checkout → free-subscription generator when the s
 flaw exists in upgrade, downgrade, and cancellation. All written by the same team,
 all vulnerable in the same way.
 
+## Focused weirdness
+
+Testing the hypotheses is table stakes. The bugs that pay come from what happens
+after — going back through everything that behaved *slightly* wrong and refusing to
+let it go. A 500 that should have been a 400. A response 80ms slower than its
+neighbors. An endpoint that quietly accepts a parameter it never documents.
+Individually, noise. That's exactly why they're still there when you arrive — the
+obvious stuff was found and fixed years ago.
+
+So the loop doesn't stop when the hypotheses are tested. It rotates back through every
+attack surface a second time, and this pass only cares about the anomalies — the
+responses that didn't fit the model of how the app is supposed to work. mdp_sec puts
+the share of real findings that originate in this pass at 83%, and after a year of
+this I don't argue with the number. The first pass teaches you the app's normal. The
+second pass is where you catch it being abnormal.
+
+This is also the pass an LLM is worst at driving alone and best at assisting. It has
+no baseline, so it can't *feel* that a response is off. But hand it the anomaly plus
+the surrounding code and it's fast at the next question: "here are the 200 and the 500
+for the same endpoint with one parameter changed — which branch produces the
+difference, and what reaches it?"
+
 ## Phase 3: The adversarial gate
 
 This is the part almost nobody builds, and it's the part that separates findings
 that pay from findings that waste your time.
 
-Before I manually verify anything, every finding runs through three validation
-rounds. Each round uses a **separate LLM instance**. This isn't optional — the model
-that generated the finding will defend it. Same mechanism as a developer defending
-their own code. Separate instance, separate prompt, separate job.
+I didn't invent this gate. The structure is @mdp_sec's validation pipeline — three
+stages, P8 through P10, each a separate Claude Opus
+instance with no memory of the one before it. Before I manually verify anything,
+every finding runs all three. The model that found the bug never sits on its own jury.
 
-### Gate 1: "Prove this wrong"
+### P8 — Validate and escalate
 
-```text
-your job: disprove this finding. be ruthless and creative. assume the researcher
-made a mistake, overlooked a mitigation, or misinterpreted the evidence.
-
-finding: {text}
-
-challenge every part of this:
-- is it ACTUALLY exploitable, or just misconfigured in a way that looks vulnerable?
-- would this work against production data, or only synthetic/test data?
-- are there mitigations the researcher missed?
-- is the "vulnerable" behavior actually documented intended functionality?
-- does the PoC actually prove what it claims, or just show something adjacent?
-
-if the finding survives, explain exactly why and what makes it real. if it doesn't,
-explain exactly what kills it — be specific about which claim breaks.
-```
-
-### Gate 2: "What else could explain this?"
+The first instance doesn't ask "is this real?" It asks "how bad does this actually
+get?" P8 confirms the trigger, then goes hunting for the impact ceiling — every object
+ID it can reach, every privilege boundary, every chain. It doesn't stop at the first
+success. It stops when it runs out of things to escalate into.
 
 ```text
-for this finding: {finding}
+you are P8 — the validator. a finding has been identified. your job:
 
-generate 3 alternative explanations for the observed behavior that are NOT security
-vulnerabilities. for each alternative, rate how likely it is compared to the
-vulnerability hypothesis, and describe what additional test would definitively
-distinguish between them.
+1. confirm the trigger. understand the prerequisites and the claimed impact.
+2. try EVERY safe escalation from the trigger condition:
+   - can it read other users' data? try every object id you can reach.
+   - can it write, modify, or delete data you don't own?
+   - can it elevate role (user → admin, member → owner)?
+   - can it chain (ssrf → metadata, xss → session theft, idor → mass pii)?
+   - can it cross a tenant or org boundary?
+3. record every escalation attempt and its outcome.
+4. do NOT accept "probably doesn't work" — test it.
+5. do NOT stop at the first success — find the ceiling.
 
-the finding only advances if the vulnerability hypothesis is MORE likely than all
-alternatives combined. be honest. most "findings" are configuration quirks.
+output: maximum confirmed impact + every escalation path attempted.
 ```
 
-### Gate 3: "Does this actually matter?"
+### P9 — Independent reproduction
+
+This is the false-positive killer, and it's the stage almost nobody writes. A fresh
+instance gets ONLY the trigger and the prerequisites — no screenshots, no original
+notes, no "here's what I saw." If it can't rebuild the finding from that alone, the
+finding isn't real. A bug that only exists when you already believe in it is not a bug.
 
 ```text
-assuming this vulnerability is real: {finding}
+you are P9 — the independent reproducer. you have ONLY the trigger condition and the
+prerequisites. you do NOT have the original proof, screenshots, or notes.
 
-validate the impact with brutal honesty:
-- does this affect real users, data, or money? or just test/placeholder content?
-- would a reasonable bug bounty program actually pay for this?
-- what is the REALISTIC severity — not what you hope, what it is?
-- is this on any "never pay" list? (missing security headers, self-xss requiring
-  victim interaction, clickjacking on non-sensitive actions, open redirect without
-  an impact chain, rate limiting without account lockout)
-- can this be chained into something that matters more?
+1. start from a clean session. create fresh accounts if needed.
+2. reproduce using only the described endpoint, parameter, payload, and auth level.
+3. capture your OWN evidence — request/response pairs, not the original's.
+4. compare against the claim:
+   - matches → pass
+   - different behavior → document the difference exactly
+   - cannot reproduce → FAIL. do not guess. do not submit.
 
-if the impact is low, say so. if it shouldn't be submitted, say so. nobody's ego
-is protected here.
+output: reproduction status (confirmed / partial / failed) + corrected proof.
 ```
 
-In practice the gates kill about 80% of AI-generated findings. A finding that dies
-in Gate 1 was hallucinated. Gate 2 was ambiguous. Gate 3 was real but worthless.
+### P10 — Hostile triager
 
-The 20% that survive are almost always real, and roughly half turn out to be
-exploitable after manual verification. That's a lot better than my manual hunting,
-where I burn hours on hunches that lead nowhere.
+The last instance does not believe you. Its only job is to kill the report. It re-runs
+every request from the stated attacker position, questions every prerequisite,
+recalculates the severity you're hoping for, and returns exactly one verdict.
 
-The `analytics_proxy` SQLi I opened with — that was a Gate 3 kill. Gate 1 survived.
-Gate 2 survived. I was excited. The impact validator asked one question: "what data
-is actually in this database?" I'd assumed user PII because it was a user-facing
-endpoint. The validator saw the DB name in an error string and checked
-`information_schema` — the tables were all aggregate event counts. The "users" table
-was browser strings. Real SQLi. Read-only replica. Public data. Finding killed. Two
-hours saved.
+```text
+you are P10 — the hostile triager. you do NOT believe this report is real. your job
+is to KILL it. only bulletproof reports survive.
+
+1. re-run every step from the stated attacker position, same session context.
+2. check every prerequisite — is it actually required, or is the attack simpler?
+   does it work without auth? without the role? against other users' data?
+3. verify severity — recalculate cvss. is the impact demonstrated or hypothetical?
+   would the program actually pay, or is it on the never-pay list? (missing headers,
+   self-xss, clickjacking on non-sensitive actions, open redirect with no chain,
+   rate limiting without account lockout)
+4. check classification, scope, and duplicates.
+
+verdict (pick exactly one):
+- PASS      → real, proven, correct severity. submit.
+- DOWNGRADE → real but severity inflated. fix it before submitting.
+- BLOCK     → evidence or prerequisites unclear. add more, then re-triage.
+- REJECT    → not exploitable, out of scope, or accepted risk. do not submit.
+
+you may NOT invent a new angle to save a weak report, accept "probably exploitable,"
+or lean on theoretical evidence. every screenshot comes from real execution.
+```
+
+In practice the gate kills about 80% of what the pipeline hands it, and the split is
+clean. P8 exposes the findings with no real impact ceiling. P9 exposes the
+hallucinations — the ones that evaporate the moment a clean session tries to rebuild
+them. P10 exposes the inflated-severity reports I *want* to be criticals. The 20% that
+survive are almost always real, and roughly half hold up as exploitable once I verify
+by hand. That beats my manual hunting, where I burn hours on hunches that go nowhere.
+
+The `analytics_proxy` SQLi I opened with died in P8 — not because it wasn't real, but
+because P8 went looking for the ceiling and there wasn't one. I'd assumed user PII
+because it was a user-facing endpoint. P8 saw the database name in an error string and
+queried `information_schema` instead of celebrating: every table was aggregate event
+counts, and the "users" table held browser user-agent strings. Real injection.
+Read-only replica. Public data. Impact ceiling: zero. Killed before P9 or P10 ever
+ran. Two hours saved.
 
 ## Phase 4: Exploitation
 
@@ -354,7 +399,7 @@ The strongest public demonstration of this architecture is Adam Kues's
 methodology maps directly to the pipeline: remove `.git` to force reasoning from
 source rather than diffing patches, constrain to "pre-authentication in production
 with MySQL," run parallel agents for 6+ hours with adversarial sub-agents
-double-checking each candidate (that's Gate 1 running at ten times the intensity),
+double-checking each candidate (that's P10 running at ten times the intensity),
 and adapt the
 [Cycle Double Cover](https://signalreads.com/articles/gpt-56-sol-ultra-produces-proof-of-the-cycle-doubl/)
 approach — a prompt pattern from GPT-5.6 Sol Ultra's proof of a 50-year-old graph
@@ -380,14 +425,18 @@ API endpoint and the IDOR everyone else missed.
 
 | What | Tool | $/mo |
 |------|------|------|
-| Deep analysis, complex exploit dev | Claude Max (Opus) | $200 |
-| Bulk JS analysis, parameter scanning | GPT API | $80-150 |
-| Endpoint triage, filtering noise | DeepSeek API | $15-25 |
-| Adversarial validation | Local model (Ollama) | $0 |
+| Recon, volume scanning, endpoint triage | DeepSeek V4 | $15-25 |
+| Primary hunting, code analysis, exploit dev | Codex / GPT-5.6 | $80-150 |
+| Validation gate (P8/P9/P10) | Claude Opus (Max) | $200 |
 | **Total** | | **~$300-375** |
 
-Before AI: Burp Pro (~$42/mo annually), $30/mo VPS, and roughly 3x more time per
-finding. The pipeline roughly doubles my effective speed for ~$230-300 in net new
+The gate is the most expensive line, and that's deliberate. The cheapest place to run
+validation is a local model — and that's exactly where false positives walk through.
+The hostile triager has to be smart enough to out-argue you about your own finding,
+so it gets your strongest reasoner, not your cheapest.
+
+Before AI: Burp Pro (~$37/mo annually), $30/mo VPS, and roughly 3x more time per
+finding. The pipeline roughly doubles my effective speed for ~$235-310 in net new
 costs. One extra Medium finding per month pays for the entire thing.
 
 ## Prompts worth stealing
